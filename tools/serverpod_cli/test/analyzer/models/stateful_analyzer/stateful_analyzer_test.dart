@@ -663,7 +663,8 @@ fields:
   );
 
   test(
-    'Given valid yaml models with one-to-one relationship on the id field, when validating all,'
+    'Given valid yaml models with one-to-one relationship on the id field, '
+    'when validateAll is called, '
     'then the class with the relation is serialized containing an id field with valid relation.',
     () {
       var yamlSource = ModelSourceBuilder().withFileName('example').withYaml(
