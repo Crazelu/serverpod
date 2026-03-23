@@ -235,15 +235,18 @@ class FutureCallManager {
     final futureCallSession = _sessionBuilder(futureCallEntry.name);
     bool deleteFutureCallEntry = true;
     Timer? heartbeatTimer;
+    int? claimId;
 
     /// Update hearbeat column for the future call claim to keep claim alive.
     Future<void> updateHeartbeat() async {
       try {
-        await FutureCallClaimEntry.db.updateWhere(
+        final rows = await FutureCallClaimEntry.db.updateWhere(
           _internalSession,
-          where: (t) => t.futureCallId.equals(futureCallEntry.id),
+          where: (t) => t.id.equals(claimId!),
           columnValues: (t) => [t.heartbeat(DateTime.now().toUtc())],
         );
+
+        if (rows.isEmpty) heartbeatTimer?.cancel();
       } catch (_) {
         heartbeatTimer?.cancel();
       }
@@ -275,6 +278,8 @@ class FutureCallManager {
         deleteFutureCallEntry = false;
         return;
       }
+
+      claimId = insertedClaims.first.id;
 
       heartbeatTimer = Timer.periodic(
         _heartbeatInterval,
