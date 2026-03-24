@@ -74,7 +74,7 @@ class FutureCallManager {
        _logSession = logSession,
        _sessionBuilder = sessionProvider,
        _initializeFutureCall = initializeFutureCall,
-       _heartbeatInterval = heartbeatInterval ?? const Duration(seconds: 30) {
+       _heartbeatInterval = heartbeatInterval ?? const Duration(minutes: 1) {
     _scheduler = ServerpodTaskScheduler(
       concurrencyLimit: _config.concurrencyLimit,
     );
