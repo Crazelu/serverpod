@@ -265,23 +265,35 @@ class FutureCallManager {
   Future<Timer?> _claimFutureCallAndStartHearbeatTimer(
     FutureCallEntry futureCallEntry,
   ) async {
-    await FutureCallClaimEntry.db.deleteWhere(
-      _internalSession,
-      where: (t) =>
-          t.futureCallId.equals(futureCallEntry.id) &
-          (t.lastHeartbeatTime < _staleClaimThreshold),
-    );
+    final entries = await _internalSession.db.transaction((transaction) async {
+      await FutureCallClaimEntry.db.lockRows(
+        _internalSession,
+        where: (t) => t.futureCallId.equals(futureCallEntry.id),
+        lockMode: LockMode.forUpdate,
+        lockBehavior: LockBehavior.skipLocked,
+        transaction: transaction,
+      );
 
-    final claim = FutureCallClaimEntry(
-      futureCallId: futureCallEntry.id,
-      lastHeartbeatTime: DateTime.now().toUtc(),
-    );
+      await FutureCallClaimEntry.db.deleteWhere(
+        _internalSession,
+        transaction: transaction,
+        where: (t) =>
+            t.futureCallId.equals(futureCallEntry.id) &
+            (t.lastHeartbeatTime < _staleClaimThreshold),
+      );
 
-    final entries = await FutureCallClaimEntry.db.insert(
-      _internalSession,
-      [claim],
-      ignoreConflicts: true,
-    );
+      final claim = FutureCallClaimEntry(
+        futureCallId: futureCallEntry.id,
+        lastHeartbeatTime: DateTime.now().toUtc(),
+      );
+
+      return await FutureCallClaimEntry.db.insert(
+        _internalSession,
+        [claim],
+        ignoreConflicts: true,
+        transaction: transaction,
+      );
+    });
 
     final claimId = entries.firstOrNull?.id;
     if (claimId != null) {

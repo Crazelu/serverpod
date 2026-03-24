@@ -549,6 +549,7 @@ void main() async {
   withServerpod(
     'Given FutureCallManager with concurrency limit 2 and 2 FutureCalls are scheduled',
     (sessionBuilder, _) {
+      late Session session;
       late FutureCallManager futureCallManager;
       late ListTestCall testCall;
       var firstButSlowest = SimpleData(num: 1000);
@@ -557,6 +558,7 @@ void main() async {
       var identifier = 'alex';
 
       setUp(() async {
+        session = sessionBuilder.build();
         futureCallManager =
             FutureCallManagerBuilder.fromTestSessionBuilder(sessionBuilder)
                 .withConfig(
@@ -589,6 +591,14 @@ void main() async {
         );
       });
 
+      tearDown(() async {
+        await FutureCallEntry.db.deleteWhere(
+          session,
+          where: (t) => t.name.equals(testCallName),
+        );
+        await session.close();
+      });
+
       group('when running all scheduled FutureCalls', () {
         setUp(() async {
           await futureCallManager.runScheduledFutureCalls();
@@ -607,6 +617,7 @@ void main() async {
         });
       });
     },
+    rollbackDatabase: RollbackDatabase.disabled,
   );
 
   withServerpod(
