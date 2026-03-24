@@ -32,7 +32,7 @@ void main() {
       late FutureCallManager futureCallManager;
       late Session session;
       late _LongRunningCounterFutureCall testCall;
-      final testCallName = 'testCall';
+      final testCallName = 'claim-insertion-call';
 
       setUp(() async {
         session = sessionBuilder.build();
@@ -88,7 +88,7 @@ void main() {
       late FutureCallManager futureCallManager;
       late Session session;
       late _CounterFutureCall testCall;
-      final testCallName = 'testCall';
+      final testCallName = 'scheduled-and-due-claim-call';
 
       setUp(() async {
         session = sessionBuilder.build();
@@ -141,7 +141,7 @@ void main() {
       late FutureCallManager futureCallManager;
       late Session session;
       late _CounterFutureCall testCall;
-      final testCallName = 'testCall';
+      final testCallName = 'existing-claimtest-call';
 
       setUp(() async {
         session = sessionBuilder.build();
@@ -204,7 +204,7 @@ void main() {
     late FutureCallManager futureCallManager;
     late Session session;
     late _CounterFutureCall testCall;
-    final testCallName = 'testCall';
+    final testCallName = 'stale-claim-test-call';
 
     setUp(() async {
       session = sessionBuilder.build();
@@ -267,7 +267,7 @@ void main() {
       late FutureCallManager futureCallManager;
       late Session session;
       late _LongRunningCounterFutureCall testCall;
-      final testCallName = 'testCall';
+      final testCallName = 'long-running-test-call';
 
       setUp(() async {
         session = sessionBuilder.build();
