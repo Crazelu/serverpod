@@ -17,13 +17,13 @@ abstract class FutureCallClaimEntry implements _i1.SerializableModel {
   FutureCallClaimEntry._({
     this.id,
     this.futureCallId,
-    required this.heartbeat,
+    required this.lastHeartbeatTime,
   });
 
   factory FutureCallClaimEntry({
     int? id,
     int? futureCallId,
-    required DateTime heartbeat,
+    required DateTime lastHeartbeatTime,
   }) = _FutureCallClaimEntryImpl;
 
   factory FutureCallClaimEntry.fromJson(
@@ -32,8 +32,8 @@ abstract class FutureCallClaimEntry implements _i1.SerializableModel {
     return FutureCallClaimEntry(
       id: jsonSerialization['id'] as int?,
       futureCallId: jsonSerialization['futureCallId'] as int?,
-      heartbeat: _i1.DateTimeJsonExtension.fromJson(
-        jsonSerialization['heartbeat'],
+      lastHeartbeatTime: _i1.DateTimeJsonExtension.fromJson(
+        jsonSerialization['lastHeartbeatTime'],
       ),
     );
   }
@@ -46,9 +46,9 @@ abstract class FutureCallClaimEntry implements _i1.SerializableModel {
   /// The id of the future call this claim entry is associated with
   int? futureCallId;
 
-  /// Heartbeat timestamp for this claim entry.
+  /// Last heartbeat timestamp for this claim entry.
   /// Used to detect stale claims that should be cleaned up.
-  DateTime heartbeat;
+  DateTime lastHeartbeatTime;
 
   /// Returns a shallow copy of this [FutureCallClaimEntry]
   /// with some or all fields replaced by the given arguments.
@@ -56,7 +56,7 @@ abstract class FutureCallClaimEntry implements _i1.SerializableModel {
   FutureCallClaimEntry copyWith({
     int? id,
     int? futureCallId,
-    DateTime? heartbeat,
+    DateTime? lastHeartbeatTime,
   });
   @override
   Map<String, dynamic> toJson() {
@@ -64,7 +64,7 @@ abstract class FutureCallClaimEntry implements _i1.SerializableModel {
       '__className__': 'serverpod.FutureCallClaimEntry',
       if (id != null) 'id': id,
       if (futureCallId != null) 'futureCallId': futureCallId,
-      'heartbeat': heartbeat.toJson(),
+      'lastHeartbeatTime': lastHeartbeatTime.toJson(),
     };
   }
 
@@ -80,11 +80,11 @@ class _FutureCallClaimEntryImpl extends FutureCallClaimEntry {
   _FutureCallClaimEntryImpl({
     int? id,
     int? futureCallId,
-    required DateTime heartbeat,
+    required DateTime lastHeartbeatTime,
   }) : super._(
          id: id,
          futureCallId: futureCallId,
-         heartbeat: heartbeat,
+         lastHeartbeatTime: lastHeartbeatTime,
        );
 
   /// Returns a shallow copy of this [FutureCallClaimEntry]
@@ -94,12 +94,12 @@ class _FutureCallClaimEntryImpl extends FutureCallClaimEntry {
   FutureCallClaimEntry copyWith({
     Object? id = _Undefined,
     Object? futureCallId = _Undefined,
-    DateTime? heartbeat,
+    DateTime? lastHeartbeatTime,
   }) {
     return FutureCallClaimEntry(
       id: id is int? ? id : this.id,
       futureCallId: futureCallId is int? ? futureCallId : this.futureCallId,
-      heartbeat: heartbeat ?? this.heartbeat,
+      lastHeartbeatTime: lastHeartbeatTime ?? this.lastHeartbeatTime,
     );
   }
 }

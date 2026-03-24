@@ -18,13 +18,13 @@ abstract class FutureCallClaimEntry
   FutureCallClaimEntry._({
     this.id,
     this.futureCallId,
-    required this.heartbeat,
+    required this.lastHeartbeatTime,
   });
 
   factory FutureCallClaimEntry({
     int? id,
     int? futureCallId,
-    required DateTime heartbeat,
+    required DateTime lastHeartbeatTime,
   }) = _FutureCallClaimEntryImpl;
 
   factory FutureCallClaimEntry.fromJson(
@@ -33,8 +33,8 @@ abstract class FutureCallClaimEntry
     return FutureCallClaimEntry(
       id: jsonSerialization['id'] as int?,
       futureCallId: jsonSerialization['futureCallId'] as int?,
-      heartbeat: _i1.DateTimeJsonExtension.fromJson(
-        jsonSerialization['heartbeat'],
+      lastHeartbeatTime: _i1.DateTimeJsonExtension.fromJson(
+        jsonSerialization['lastHeartbeatTime'],
       ),
     );
   }
@@ -49,9 +49,9 @@ abstract class FutureCallClaimEntry
   /// The id of the future call this claim entry is associated with
   int? futureCallId;
 
-  /// Heartbeat timestamp for this claim entry.
+  /// Last heartbeat timestamp for this claim entry.
   /// Used to detect stale claims that should be cleaned up.
-  DateTime heartbeat;
+  DateTime lastHeartbeatTime;
 
   @override
   _i1.Table<int?> get table => t;
@@ -62,7 +62,7 @@ abstract class FutureCallClaimEntry
   FutureCallClaimEntry copyWith({
     int? id,
     int? futureCallId,
-    DateTime? heartbeat,
+    DateTime? lastHeartbeatTime,
   });
   @override
   Map<String, dynamic> toJson() {
@@ -70,7 +70,7 @@ abstract class FutureCallClaimEntry
       '__className__': 'serverpod.FutureCallClaimEntry',
       if (id != null) 'id': id,
       if (futureCallId != null) 'futureCallId': futureCallId,
-      'heartbeat': heartbeat.toJson(),
+      'lastHeartbeatTime': lastHeartbeatTime.toJson(),
     };
   }
 
@@ -80,7 +80,7 @@ abstract class FutureCallClaimEntry
       '__className__': 'serverpod.FutureCallClaimEntry',
       if (id != null) 'id': id,
       if (futureCallId != null) 'futureCallId': futureCallId,
-      'heartbeat': heartbeat.toJson(),
+      'lastHeartbeatTime': lastHeartbeatTime.toJson(),
     };
   }
 
@@ -120,11 +120,11 @@ class _FutureCallClaimEntryImpl extends FutureCallClaimEntry {
   _FutureCallClaimEntryImpl({
     int? id,
     int? futureCallId,
-    required DateTime heartbeat,
+    required DateTime lastHeartbeatTime,
   }) : super._(
          id: id,
          futureCallId: futureCallId,
-         heartbeat: heartbeat,
+         lastHeartbeatTime: lastHeartbeatTime,
        );
 
   /// Returns a shallow copy of this [FutureCallClaimEntry]
@@ -134,12 +134,12 @@ class _FutureCallClaimEntryImpl extends FutureCallClaimEntry {
   FutureCallClaimEntry copyWith({
     Object? id = _Undefined,
     Object? futureCallId = _Undefined,
-    DateTime? heartbeat,
+    DateTime? lastHeartbeatTime,
   }) {
     return FutureCallClaimEntry(
       id: id is int? ? id : this.id,
       futureCallId: futureCallId is int? ? futureCallId : this.futureCallId,
-      heartbeat: heartbeat ?? this.heartbeat,
+      lastHeartbeatTime: lastHeartbeatTime ?? this.lastHeartbeatTime,
     );
   }
 }
@@ -153,9 +153,9 @@ class FutureCallClaimEntryUpdateTable
     value,
   );
 
-  _i1.ColumnValue<DateTime, DateTime> heartbeat(DateTime value) =>
+  _i1.ColumnValue<DateTime, DateTime> lastHeartbeatTime(DateTime value) =>
       _i1.ColumnValue(
-        table.heartbeat,
+        table.lastHeartbeatTime,
         value,
       );
 }
@@ -168,8 +168,8 @@ class FutureCallClaimEntryTable extends _i1.Table<int?> {
       'futureCallId',
       this,
     );
-    heartbeat = _i1.ColumnDateTime(
-      'heartbeat',
+    lastHeartbeatTime = _i1.ColumnDateTime(
+      'lastHeartbeatTime',
       this,
     );
   }
@@ -179,15 +179,15 @@ class FutureCallClaimEntryTable extends _i1.Table<int?> {
   /// The id of the future call this claim entry is associated with
   late final _i1.ColumnInt futureCallId;
 
-  /// Heartbeat timestamp for this claim entry.
+  /// Last heartbeat timestamp for this claim entry.
   /// Used to detect stale claims that should be cleaned up.
-  late final _i1.ColumnDateTime heartbeat;
+  late final _i1.ColumnDateTime lastHeartbeatTime;
 
   @override
   List<_i1.Column> get columns => [
     id,
     futureCallId,
-    heartbeat,
+    lastHeartbeatTime,
   ];
 }
 

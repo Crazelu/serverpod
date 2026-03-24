@@ -6,9 +6,9 @@ fields:
   ### The id of the future call this claim entry is associated with
   futureCallId: int?, relation(parent=serverpod_future_call, onDelete=Cascade)
 
-  ### Heartbeat timestamp for this claim entry.
+  ### Last heartbeat timestamp for this claim entry.
   ### Used to detect stale claims that should be cleaned up.
-  heartbeat: DateTime
+  lastHeartbeatTime: DateTime
 
 indexes:
   future_call_unique_idx:

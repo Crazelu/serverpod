@@ -90,7 +90,7 @@ class FutureCallScanner {
 
         await FutureCallClaimEntry.db.deleteWhere(
           _internalSession,
-          where: (t) => t.heartbeat < staleClaimThreshold,
+          where: (t) => t.lastHeartbeatTime < staleClaimThreshold,
         );
       }
 

@@ -243,7 +243,7 @@ class FutureCallManager {
         final rows = await FutureCallClaimEntry.db.updateWhere(
           _internalSession,
           where: (t) => t.id.equals(claimId!),
-          columnValues: (t) => [t.heartbeat(DateTime.now().toUtc())],
+          columnValues: (t) => [t.lastHeartbeatTime(DateTime.now().toUtc())],
         );
 
         if (rows.isEmpty) heartbeatTimer?.cancel();
@@ -263,7 +263,7 @@ class FutureCallManager {
 
       final claim = FutureCallClaimEntry(
         futureCallId: futureCallEntry.id,
-        heartbeat: DateTime.now().toUtc(),
+        lastHeartbeatTime: DateTime.now().toUtc(),
       );
 
       final insertedClaims = await FutureCallClaimEntry.db.insert(

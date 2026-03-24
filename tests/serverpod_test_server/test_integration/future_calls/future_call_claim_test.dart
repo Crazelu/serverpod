@@ -166,7 +166,7 @@ void main() {
         // Insert an existing claim for this future call
         final claim = FutureCallClaimEntry(
           futureCallId: entry.id,
-          heartbeat: DateTime.now().toUtc(),
+          lastHeartbeatTime: DateTime.now().toUtc(),
         );
         await FutureCallClaimEntry.db.insert(session, [claim]);
       });
@@ -230,7 +230,7 @@ void main() {
       // Insert a stale claim for this future call
       final claim = FutureCallClaimEntry(
         futureCallId: entry.id,
-        heartbeat: DateTime.now().toUtc().subtract(
+        lastHeartbeatTime: DateTime.now().toUtc().subtract(
           const Duration(minutes: 5),
         ),
       );
@@ -322,7 +322,9 @@ void main() {
 
           expect(updatedClaim.id, equals(initialClaim.id));
           expect(
-            updatedClaim.heartbeat.isAfter(initialClaim.heartbeat),
+            updatedClaim.lastHeartbeatTime.isAfter(
+              initialClaim.lastHeartbeatTime,
+            ),
             isTrue,
           );
         });
