@@ -85,7 +85,6 @@ class FutureCallManager {
       shouldSkipScan: _scheduler.isConcurrentLimitReached,
       dispatchEntries: _dispatchEntries,
       diagnosticsService: _diagnosticsService,
-      heartbeatInterval: _heartbeatInterval,
     );
   }
 
@@ -227,6 +226,73 @@ class FutureCallManager {
     _scheduler.addTaskCallbacks(callbacks.nonNulls.toList());
   }
 
+  /// Updates hearbeat for a future call claim to keep it alive.
+  /// Hearbeat is only updated if the claim is held by the
+  /// running process.
+  Future<void> _updateHeartbeat({
+    required int claimId,
+    required Timer timer,
+  }) async {
+    try {
+      final rows = await FutureCallClaimEntry.db.updateWhere(
+        _internalSession,
+        where: (t) => t.id.equals(claimId),
+        columnValues: (t) => [t.lastHeartbeatTime(DateTime.now().toUtc())],
+      );
+
+      if (rows.isEmpty) timer.cancel();
+    } catch (_) {
+      timer.cancel();
+    }
+  }
+
+  /// Threshold for considering future call claims as stale.
+  /// Claims with [FutureCallClaimEntry.lastHeartbeatTime]
+  /// that are older than this threshold are considered stale.
+  DateTime get _staleClaimThreshold {
+    return DateTime.now().toUtc().subtract(
+      _heartbeatInterval * 2,
+    );
+  }
+
+  /// Attempts to claim the execution for a [FutureCallEntry].
+  /// Any stale claim for the [FutureCallEntry] is deleted to allow
+  /// re-claiming.
+  ///
+  /// Returns a [Future] that:
+  /// - resolves to a heartbeat timer if a claim was successfully inserted
+  /// - resolves to null otherwise
+  Future<Timer?> _claimFutureCallAndStartHearbeatTimer(
+    FutureCallEntry futureCallEntry,
+  ) async {
+    await FutureCallClaimEntry.db.deleteWhere(
+      _internalSession,
+      where: (t) =>
+          t.futureCallId.equals(futureCallEntry.id) &
+          (t.lastHeartbeatTime < _staleClaimThreshold),
+    );
+
+    final claim = FutureCallClaimEntry(
+      futureCallId: futureCallEntry.id,
+      lastHeartbeatTime: DateTime.now().toUtc(),
+    );
+
+    final entries = await FutureCallClaimEntry.db.insert(
+      _internalSession,
+      [claim],
+      ignoreConflicts: true,
+    );
+
+    final claimId = entries.firstOrNull?.id;
+    if (claimId != null) {
+      return Timer.periodic(
+        _heartbeatInterval,
+        (timer) => _updateHeartbeat(claimId: claimId, timer: timer),
+      );
+    }
+    return null;
+  }
+
   /// Runs a [FutureCallEntry] and completes when the future call is completed.
   Future<void> _runFutureCall({
     required FutureCallEntry futureCallEntry,
@@ -235,22 +301,6 @@ class FutureCallManager {
     final futureCallSession = _sessionBuilder(futureCallEntry.name);
     bool deleteFutureCallEntry = true;
     Timer? heartbeatTimer;
-    int? claimId;
-
-    /// Update hearbeat column for the future call claim to keep claim alive.
-    Future<void> updateHeartbeat() async {
-      try {
-        final rows = await FutureCallClaimEntry.db.updateWhere(
-          _internalSession,
-          where: (t) => t.id.equals(claimId!),
-          columnValues: (t) => [t.lastHeartbeatTime(DateTime.now().toUtc())],
-        );
-
-        if (rows.isEmpty) heartbeatTimer?.cancel();
-      } catch (_) {
-        heartbeatTimer?.cancel();
-      }
-    }
 
     try {
       dynamic object;
@@ -261,30 +311,16 @@ class FutureCallManager {
         );
       }
 
-      final claim = FutureCallClaimEntry(
-        futureCallId: futureCallEntry.id,
-        lastHeartbeatTime: DateTime.now().toUtc(),
+      heartbeatTimer = await _claimFutureCallAndStartHearbeatTimer(
+        futureCallEntry,
       );
 
-      final insertedClaims = await FutureCallClaimEntry.db.insert(
-        _internalSession,
-        [claim],
-        ignoreConflicts: true,
-      );
-
-      if (insertedClaims.isEmpty) {
+      if (heartbeatTimer == null) {
         // Claim already exists. The instance with the
         // claim will run the call and clean up after running.
         deleteFutureCallEntry = false;
         return;
       }
-
-      claimId = insertedClaims.first.id;
-
-      heartbeatTimer = Timer.periodic(
-        _heartbeatInterval,
-        (_) => updateHeartbeat(),
-      );
 
       await futureCall.invoke(futureCallSession, object);
       await futureCallSession.close();
