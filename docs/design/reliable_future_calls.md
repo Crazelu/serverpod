@@ -70,7 +70,7 @@ await FutureCallClaimEntry.db.insert(_internalSession, [
 ], ignoreConflicts: true);
 ```
 
-The server executes the future calls if the insert is successful. The claim acts as a lease lock during execution. If the insert fails due to the unique constraint, another server has already claimed the call.
+The server executes the future call if the insert is successful. The claim acts as a lease lock during execution. If the insert fails due to the unique constraint, another server has already claimed the call.
 
 #### 3. On successful execution
 
@@ -83,12 +83,12 @@ await FutureCallEntry.db.delete(_internalSession, futureCallEntry);
 
 #### 4. Hearbeat Pings
 
-Claims for future calls that are running will be updated with a heartbeat timestamp every 30 seconds to keep them alive. This will allow for the `FutureCallScanner` to also delete stale claims when it finds due future calls.
-A claim will be considered stale if its heartbeat timestamp is behind by 2x the normal hearbeat interval (that is, by 1 minute).
+Claims for future calls that are running will be updated with a heartbeat timestamp every minute to keep them alive. This will allow for the `FutureCallManager` to delete a stale claim before running a future call.
+A claim will be considered stale if its heartbeat timestamp is behind by 3x the normal hearbeat interval (that is, by 3 minutes).
 
 ```dart
 final staleClaimThreshold = DateTime.now().toUtc().subtract(
-  _heartbeatInterval * 2,
+  _heartbeatInterval * 3,
 );
 
 await FutureCallClaimEntry.db.deleteWhere(
