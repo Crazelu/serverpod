@@ -39,10 +39,13 @@ void main() {
 
       setUp(() async {
         session = sessionBuilder.build();
+        final config = FutureCallConfig(
+          scanInterval: Duration(milliseconds: 1),
+        );
 
         futureCallManager = FutureCallManagerBuilder.fromTestSessionBuilder(
           sessionBuilder,
-        ).build();
+        ).withConfig(config).build();
 
         testCall = _CompleterFutureCall();
         futureCallManager.registerFutureCall(testCall, testCallName);
@@ -69,10 +72,13 @@ void main() {
         setUp(() async {
           await futureCallManager.start();
           // Wait for future call execution to be scheduled
-          await Future.delayed(const Duration(milliseconds: 500));
+          await Future.delayed(const Duration(milliseconds: 100));
         });
 
         tearDown(() async {
+          if (!testCall.completer.isCompleted) {
+            testCall.completer.complete();
+          }
           await futureCallManager.stop();
         });
 
@@ -95,7 +101,7 @@ void main() {
             await testCall.completer.future;
 
             // Wait for cleanup to run
-            await Future.delayed(const Duration(milliseconds: 500));
+            await Future.delayed(const Duration(milliseconds: 100));
             final claims = await FutureCallClaimEntry.db.find(session);
             expect(claims, isEmpty);
           },
@@ -179,10 +185,13 @@ void main() {
 
       setUp(() async {
         session = sessionBuilder.build();
+        final config = FutureCallConfig(
+          scanInterval: Duration(milliseconds: 1),
+        );
 
         futureCallManager = FutureCallManagerBuilder.fromTestSessionBuilder(
           sessionBuilder,
-        ).build();
+        ).withConfig(config).build();
 
         testCall = _CompleterFutureCall();
         futureCallManager.registerFutureCall(testCall, testCallName);
@@ -243,12 +252,15 @@ void main() {
         });
 
         tearDown(() async {
+          if (!testCall.completer.isCompleted) {
+            testCall.completer.complete();
+          }
           await futureCallManager.stop();
         });
 
         test('then the stale claim is replaced', () async {
           // Wait for the call to be scheduled
-          await Future.delayed(const Duration(milliseconds: 500));
+          await Future.delayed(const Duration(milliseconds: 100));
 
           final claims = await FutureCallClaimEntry.db.find(session);
           expect(claims, hasLength(1));
@@ -268,14 +280,17 @@ void main() {
       late Session session;
       late _CompleterFutureCall testCall;
       final testCallName = 'long-running-test-call';
-      const heartbeatInterval = Duration(milliseconds: 500);
+      const heartbeatInterval = Duration(milliseconds: 100);
 
       setUp(() async {
         session = sessionBuilder.build();
+        final config = FutureCallConfig(
+          scanInterval: Duration(milliseconds: 1),
+        );
 
         futureCallManager = FutureCallManagerBuilder.fromTestSessionBuilder(
           sessionBuilder,
-        ).withHeartbeatInterval(heartbeatInterval).build();
+        ).withConfig(config).withHeartbeatInterval(heartbeatInterval).build();
 
         testCall = _CompleterFutureCall();
         futureCallManager.registerFutureCall(testCall, testCallName);
@@ -303,12 +318,15 @@ void main() {
         });
 
         tearDown(() async {
+          if (!testCall.completer.isCompleted) {
+            testCall.completer.complete();
+          }
           await futureCallManager.stop();
         });
 
         test('then heartbeat timestamp is updated periodically', () async {
           // Wait for future call execution to be scheduled
-          await Future.delayed(const Duration(seconds: 1));
+          await Future.delayed(const Duration(milliseconds: 100));
 
           final initialClaims = await FutureCallClaimEntry.db.find(session);
           expect(initialClaims, hasLength(1));
@@ -331,6 +349,26 @@ void main() {
 
           testCall.completer.complete();
         });
+
+        test(
+          'then heartbeat timer is cancelled after future call is executed',
+          () async {
+            final timer = Timer.periodic(heartbeatInterval, (_) {});
+
+            // ignore: invalid_use_of_visible_for_testing_member
+            futureCallManager.setHeartbeatTimerForTesting(timer);
+
+            // Wait for future call execution to be scheduled
+            await Future.delayed(const Duration(milliseconds: 100));
+
+            testCall.completer.complete();
+            await testCall.completer.future;
+
+            // Wait for cleanup to run
+            await Future.delayed(const Duration(milliseconds: 100));
+            expect(timer.isActive, isFalse);
+          },
+        );
       });
     },
     rollbackDatabase: RollbackDatabase.disabled,
