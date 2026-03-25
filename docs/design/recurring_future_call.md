@@ -6,7 +6,7 @@ Serverpod currently supports scheduling future calls using `callWithDelay` or `c
 
 Recurring jobs are currently implemented by manually scheduling the next future call from inside the executing future call itself. This approach works but is unintuitive and requires developers to manually manage scheduling logic.
 
-This design introduces native recurring future calls using cron expressions while preserving full compatibility with the existing future call system. Developers will be able to schedule recurring tasks using cron expressions or a Dart API with Duration like syntax that converts to cron expressions internally.
+This design introduces native recurring future calls using cron expressions while preserving full compatibility with the existing future call system. Developers will be able to schedule recurring tasks using cron expressions or a utility API for common cases that converts to cron expressions internally.
 
 Recurring calls will reuse the existing execution pipeline by computing the next execution time after each run and updating the existing future call entry.
 
@@ -14,10 +14,10 @@ Recurring calls will reuse the existing execution pipeline by computing the next
 
 Extend the future call system to support two types of entries:
 
-- one-off – existing behavior
+- oneOff – existing behavior
 - recurring – scheduled using cron expressions
 
-Recurring calls will store a cron expression. After execution, the cron expression will be parsed to compute the next execution time and the future call entry will be updated accordingly. This ensures that the existing query used to fetch due future calls remains unchanged.
+Recurring call entries will store a cron expression. After execution, the cron expression will be parsed to compute the next execution time and the future call entry will be updated accordingly. This ensures that the existing query used to fetch due future calls remains unchanged.
 
 ### Database Schema
 
@@ -44,28 +44,20 @@ values:
   - recurring
 ```
 
-Rules:
-
-- cron must be null for oneOff
-- cron must be defined for recurring
-
 ### Scheduling API
 
 A new `recurring` method will be added to `FutureCallDispatch`.
 
 ```dart
-/// Calls a [FutureCall] at a recurring interval defined by [cronExpression], 
+/// Calls a [FutureCall] at a recurring interval defined by [cronExpression],
 /// optionally passing a [String] identifier.
-T recurring(String cronExpression, {String? identifier});
+T recurring(String cronExpression, {String? identifier}) {}
 ```
 
 Developers can then schedule recurring calls using the generated type-safe API.
 
 ```dart
-    await pod.futureCalls
-      .recurring("0 * * * *")
-      .example
-      .runTask();
+await pod.futureCalls.recurring("0 * * * *").example.runTask();
 ```
 
 To simplify common use cases, `FutureCallSchedule` utility methods will be introduced such as:
@@ -80,10 +72,7 @@ FutureCallSchedule.annually(); // * * 1 1 *
 These utility methods will return valid cron expressions that interoperate with the `recurring` method.
 
 ```dart
-    await pod.futureCalls
-      .recurring(FutureCallSchedule.daily())
-      .example
-      .runTask();
+await pod.futureCalls.recurring(FutureCallSchedule.daily()).example.runTask();
 ```
 
 ### Execution Flow
