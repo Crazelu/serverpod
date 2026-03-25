@@ -249,6 +249,7 @@ void main() async {
         test('then the FutureCallEntry gets deleted from database', () async {
           final futureCallEntries = await FutureCallEntry.db.find(
             session,
+            where: (entry) => entry.name.equals(testCallName),
           );
 
           expect(futureCallEntries, isEmpty);
@@ -474,6 +475,7 @@ void main() async {
           () async {
             final futureCallEntries = await FutureCallEntry.db.find(
               session,
+              where: (entry) => entry.name.equals(testCallName),
             );
 
             expect(futureCallEntries, isEmpty);
