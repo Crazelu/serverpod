@@ -241,8 +241,8 @@ class FutureCallManager {
       );
 
       if (rows.isEmpty) timer.cancel();
-    } catch (_) {
-      timer.cancel();
+    } catch (error, stackTrace) {
+      _diagnosticsService.submitFrameworkException(error, stackTrace);
     }
   }
 
@@ -251,7 +251,7 @@ class FutureCallManager {
   /// that are older than this threshold are considered stale.
   DateTime get _staleClaimThreshold {
     return DateTime.now().toUtc().subtract(
-      _heartbeatInterval * 2,
+      _heartbeatInterval * 3,
     );
   }
 
@@ -262,45 +262,48 @@ class FutureCallManager {
   /// Returns a [Future] that:
   /// - resolves to a heartbeat timer if a claim was successfully inserted
   /// - resolves to null otherwise
-  Future<Timer?> _claimFutureCallAndStartHearbeatTimer(
+  Future<Timer?> _claimFutureCallAndStartHeartbeatTimer(
     FutureCallEntry futureCallEntry,
   ) async {
-    final entries = await _internalSession.db.transaction((transaction) async {
-      await FutureCallClaimEntry.db.lockRows(
-        _internalSession,
-        where: (t) => t.futureCallId.equals(futureCallEntry.id),
-        lockMode: LockMode.forUpdate,
-        lockBehavior: LockBehavior.skipLocked,
-        transaction: transaction,
+    try {
+      final entries = await _internalSession.db.transaction(
+        (transaction) async {
+          // Delete any existing stale claim to allow re-claiming
+          await FutureCallClaimEntry.db.deleteWhere(
+            _internalSession,
+            transaction: transaction,
+            where: (t) =>
+                t.futureCallId.equals(futureCallEntry.id) &
+                (t.lastHeartbeatTime < _staleClaimThreshold),
+          );
+
+          final claim = FutureCallClaimEntry(
+            futureCallId: futureCallEntry.id,
+            lastHeartbeatTime: DateTime.now().toUtc(),
+          );
+
+          return await FutureCallClaimEntry.db.insert(
+            _internalSession,
+            [claim],
+            ignoreConflicts: true,
+            transaction: transaction,
+          );
+        },
+        settings: const TransactionSettings(
+          // Prevents concurrent transactions with delete and insert queries on the same entry
+          isolationLevel: IsolationLevel.repeatableRead,
+        ),
       );
 
-      await FutureCallClaimEntry.db.deleteWhere(
-        _internalSession,
-        transaction: transaction,
-        where: (t) =>
-            t.futureCallId.equals(futureCallEntry.id) &
-            (t.lastHeartbeatTime < _staleClaimThreshold),
-      );
-
-      final claim = FutureCallClaimEntry(
-        futureCallId: futureCallEntry.id,
-        lastHeartbeatTime: DateTime.now().toUtc(),
-      );
-
-      return await FutureCallClaimEntry.db.insert(
-        _internalSession,
-        [claim],
-        ignoreConflicts: true,
-        transaction: transaction,
-      );
-    });
-
-    final claimId = entries.firstOrNull?.id;
-    if (claimId != null) {
-      return Timer.periodic(
-        _heartbeatInterval,
-        (timer) => _updateHeartbeat(claimId: claimId, timer: timer),
-      );
+      final claimId = entries.firstOrNull?.id;
+      if (claimId != null) {
+        return Timer.periodic(
+          _heartbeatInterval,
+          (timer) => _updateHeartbeat(claimId: claimId, timer: timer),
+        );
+      }
+    } catch (error, stackTrace) {
+      _diagnosticsService.submitFrameworkException(error, stackTrace);
     }
     return null;
   }
@@ -310,9 +313,15 @@ class FutureCallManager {
     required FutureCallEntry futureCallEntry,
     required FutureCall<SerializableModel> futureCall,
   }) async {
+    Timer? heartbeatTimer = await _claimFutureCallAndStartHeartbeatTimer(
+      futureCallEntry,
+    );
+
+    // Claim already exists. The instance with the
+    // claim will run the call and clean up after running.
+    if (heartbeatTimer == null) return;
+
     final futureCallSession = _sessionBuilder(futureCallEntry.name);
-    bool deleteFutureCallEntry = true;
-    Timer? heartbeatTimer;
 
     try {
       dynamic object;
@@ -321,17 +330,6 @@ class FutureCallManager {
           futureCallEntry.serializedObject!,
           futureCall.dataType,
         );
-      }
-
-      heartbeatTimer = await _claimFutureCallAndStartHearbeatTimer(
-        futureCallEntry,
-      );
-
-      if (heartbeatTimer == null) {
-        // Claim already exists. The instance with the
-        // claim will run the call and clean up after running.
-        deleteFutureCallEntry = false;
-        return;
       }
 
       await futureCall.invoke(futureCallSession, object);
@@ -345,14 +343,11 @@ class FutureCallManager {
 
       await futureCallSession.close(error: error, stackTrace: stackTrace);
     } finally {
-      heartbeatTimer?.cancel();
-
-      if (deleteFutureCallEntry) {
-        await FutureCallEntry.db.deleteWhere(
-          _internalSession,
-          where: (t) => t.id.equals(futureCallEntry.id),
-        );
-      }
+      heartbeatTimer.cancel();
+      await FutureCallEntry.db.deleteWhere(
+        _internalSession,
+        where: (t) => t.id.equals(futureCallEntry.id),
+      );
     }
   }
 

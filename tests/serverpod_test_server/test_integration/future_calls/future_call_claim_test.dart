@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:serverpod/protocol.dart' show FutureCallEntry;
 import 'package:serverpod/serverpod.dart';
 import 'package:serverpod/src/generated/future_call_claim_entry.dart';
@@ -15,12 +17,13 @@ class _CounterFutureCall extends FutureCall<SimpleData> {
   }
 }
 
-class _LongRunningCounterFutureCall extends FutureCall<SimpleData> {
+class _CompleterFutureCall extends FutureCall<SimpleData> {
+  final Completer<SimpleData?> completer = Completer<SimpleData?>();
   int counter = 0;
 
   @override
   Future<void> invoke(Session session, SimpleData? object) async {
-    await Future.delayed(const Duration(seconds: 2));
+    await completer.future;
     counter++;
   }
 }
@@ -31,7 +34,7 @@ void main() {
     (sessionBuilder, _) {
       late FutureCallManager futureCallManager;
       late Session session;
-      late _LongRunningCounterFutureCall testCall;
+      late _CompleterFutureCall testCall;
       final testCallName = 'claim-insertion-call';
 
       setUp(() async {
@@ -41,7 +44,7 @@ void main() {
           sessionBuilder,
         ).build();
 
-        testCall = _LongRunningCounterFutureCall();
+        testCall = _CompleterFutureCall();
         futureCallManager.registerFutureCall(testCall, testCallName);
 
         await futureCallManager.scheduleFutureCall(
@@ -65,6 +68,8 @@ void main() {
       group('when start is called', () {
         setUp(() async {
           await futureCallManager.start();
+          // Wait for future call execution to be scheduled
+          await Future.delayed(const Duration(milliseconds: 500));
         });
 
         tearDown(() async {
@@ -72,66 +77,32 @@ void main() {
         });
 
         test('then a claim is inserted for the FutureCall', () async {
-          // Wait for future call execution to be scheduled
-          await Future.delayed(const Duration(seconds: 1));
-
           final claims = await FutureCallClaimEntry.db.find(session);
           expect(claims, hasLength(1));
-        });
-      });
-    },
-  );
-
-  withServerpod(
-    'Given FutureCallManager with scheduled FutureCall that is due',
-    (sessionBuilder, _) {
-      late FutureCallManager futureCallManager;
-      late Session session;
-      late _CounterFutureCall testCall;
-      final testCallName = 'scheduled-and-due-claim-call';
-
-      setUp(() async {
-        session = sessionBuilder.build();
-
-        futureCallManager = FutureCallManagerBuilder.fromTestSessionBuilder(
-          sessionBuilder,
-        ).build();
-
-        testCall = _CounterFutureCall();
-        futureCallManager.registerFutureCall(testCall, testCallName);
-
-        await futureCallManager.scheduleFutureCall(
-          testCallName,
-          SimpleData(num: 4),
-          DateTime.now().subtract(const Duration(seconds: 1)),
-          '1',
-          '',
-        );
-      });
-
-      tearDown(() async {
-        await FutureCallEntry.db.deleteWhere(
-          session,
-          where: (entry) => entry.name.equals(testCallName),
-        );
-        await session.close();
-      });
-
-      group('when running scheduled FutureCalls', () {
-        setUp(() async {
-          await futureCallManager.runScheduledFutureCalls();
+          testCall.completer.complete();
         });
 
         test('then the FutureCall is executed', () async {
+          testCall.completer.complete();
+          await testCall.completer.future;
           expect(testCall.counter, equals(1));
         });
 
-        test('then the claim is deleted', () async {
-          final claims = await FutureCallClaimEntry.db.find(session);
-          expect(claims, isEmpty);
-        });
+        test(
+          'then the claim is deleted after the FutureCall is executed',
+          () async {
+            testCall.completer.complete();
+            await testCall.completer.future;
+
+            // Wait for cleanup to run
+            await Future.delayed(const Duration(milliseconds: 500));
+            final claims = await FutureCallClaimEntry.db.find(session);
+            expect(claims, isEmpty);
+          },
+        );
       });
     },
+    rollbackDatabase: RollbackDatabase.disabled,
   );
 
   withServerpod(
@@ -196,87 +167,117 @@ void main() {
     },
   );
 
-  withServerpod('Given FutureCallManager with scheduled FutureCall that is due '
-      'and existing stale claim in the database for the FutureCall', (
-    sessionBuilder,
-    _,
-  ) {
-    late FutureCallManager futureCallManager;
-    late Session session;
-    late _CounterFutureCall testCall;
-    final testCallName = 'stale-claim-test-call';
-
-    setUp(() async {
-      session = sessionBuilder.build();
-
-      futureCallManager = FutureCallManagerBuilder.fromTestSessionBuilder(
-        sessionBuilder,
-      ).build();
-
-      testCall = _CounterFutureCall();
-      futureCallManager.registerFutureCall(testCall, testCallName);
-
-      // Insert a future call entry that is due
-      var entry = FutureCallEntry(
-        name: testCallName,
-        serializedObject: SimpleData(num: 4).toString(),
-        time: DateTime.now().subtract(const Duration(seconds: 1)),
-        serverId: '1',
-        identifier: '',
-      );
-
-      entry = await FutureCallEntry.db.insertRow(session, entry);
-
-      // Insert a stale claim for this future call
-      final claim = FutureCallClaimEntry(
-        futureCallId: entry.id,
-        lastHeartbeatTime: DateTime.now().toUtc().subtract(
-          const Duration(minutes: 5),
-        ),
-      );
-      await FutureCallClaimEntry.db.insert(session, [claim]);
-    });
-
-    tearDown(() async {
-      await FutureCallEntry.db.deleteWhere(
-        session,
-        where: (entry) => entry.name.equals(testCallName),
-      );
-      await session.close();
-    });
-
-    group('when running scheduled FutureCalls', () {
-      setUp(() async {
-        await futureCallManager.runScheduledFutureCalls();
-      });
-
-      test('then the FutureCall is executed', () async {
-        expect(testCall.counter, equals(1));
-      });
-
-      test('then the claim is deleted', () async {
-        final claims = await FutureCallClaimEntry.db.find(session);
-        expect(claims, isEmpty);
-      });
-    });
-  });
-
   withServerpod(
-    'Given FutureCallManager with scheduled long running FutureCall that is due',
+    'Given FutureCallManager with scheduled FutureCall that is due '
+    'and existing stale claim in the database for the FutureCall',
     (sessionBuilder, _) {
       late FutureCallManager futureCallManager;
       late Session session;
-      late _LongRunningCounterFutureCall testCall;
-      final testCallName = 'long-running-test-call';
+      late _CompleterFutureCall testCall;
+      final testCallName = 'stale-claim-test-call';
+      late FutureCallClaimEntry staleClaim;
 
       setUp(() async {
         session = sessionBuilder.build();
 
         futureCallManager = FutureCallManagerBuilder.fromTestSessionBuilder(
           sessionBuilder,
-        ).withHeartbeatInterval(Duration(milliseconds: 500)).build();
+        ).build();
 
-        testCall = _LongRunningCounterFutureCall();
+        testCall = _CompleterFutureCall();
+        futureCallManager.registerFutureCall(testCall, testCallName);
+
+        // Insert a future call entry that is due
+        var entry = FutureCallEntry(
+          name: testCallName,
+          serializedObject: SimpleData(num: 4).toString(),
+          time: DateTime.now().subtract(const Duration(seconds: 1)),
+          serverId: '1',
+          identifier: '',
+        );
+
+        entry = await FutureCallEntry.db.insertRow(session, entry);
+
+        // Insert a stale claim for this future call
+        staleClaim = FutureCallClaimEntry(
+          futureCallId: entry.id,
+          lastHeartbeatTime: DateTime.now().toUtc().subtract(
+            const Duration(minutes: 5),
+          ),
+        );
+
+        staleClaim = await FutureCallClaimEntry.db.insertRow(
+          session,
+          staleClaim,
+        );
+      });
+
+      tearDown(() async {
+        await FutureCallEntry.db.deleteWhere(
+          session,
+          where: (entry) => entry.name.equals(testCallName),
+        );
+        await session.close();
+      });
+
+      group('when running scheduled FutureCalls', () {
+        setUp(() async {
+          testCall.completer.complete();
+          await futureCallManager.runScheduledFutureCalls();
+        });
+
+        test('then the FutureCall is executed', () async {
+          await testCall.completer.future;
+          expect(testCall.counter, equals(1));
+        });
+
+        test('then the claim is deleted', () async {
+          final claims = await FutureCallClaimEntry.db.find(session);
+          expect(claims, isEmpty);
+        });
+      });
+
+      group('when start is called', () {
+        setUp(() async {
+          await futureCallManager.start();
+        });
+
+        tearDown(() async {
+          await futureCallManager.stop();
+        });
+
+        test('then the stale claim is replaced', () async {
+          // Wait for the call to be scheduled
+          await Future.delayed(const Duration(milliseconds: 500));
+
+          final claims = await FutureCallClaimEntry.db.find(session);
+          expect(claims, hasLength(1));
+          expect(staleClaim, isNot(claims.first));
+
+          testCall.completer.complete();
+          await testCall.completer.future;
+        });
+      });
+    },
+  );
+
+  withServerpod(
+    'Given FutureCallManager with scheduled long running FutureCall that is due',
+    (sessionBuilder, _) {
+      late FutureCallManager futureCallManager;
+      late Session session;
+      late _CompleterFutureCall testCall;
+      final testCallName = 'long-running-test-call';
+      const heartbeatInterval = Duration(milliseconds: 500);
+
+      setUp(() async {
+        session = sessionBuilder.build();
+
+        futureCallManager = FutureCallManagerBuilder.fromTestSessionBuilder(
+          sessionBuilder,
+        ).withHeartbeatInterval(heartbeatInterval).build();
+
+        testCall = _CompleterFutureCall();
         futureCallManager.registerFutureCall(testCall, testCallName);
 
         await futureCallManager.scheduleFutureCall(
@@ -312,7 +313,7 @@ void main() {
           final initialClaims = await FutureCallClaimEntry.db.find(session);
           expect(initialClaims, hasLength(1));
 
-          await Future.delayed(Duration(milliseconds: 500));
+          await Future.delayed(heartbeatInterval * 2);
 
           final updatedClaims = await FutureCallClaimEntry.db.find(session);
           expect(updatedClaims, hasLength(1));
@@ -327,6 +328,8 @@ void main() {
             ),
             isTrue,
           );
+
+          testCall.completer.complete();
         });
       });
     },
