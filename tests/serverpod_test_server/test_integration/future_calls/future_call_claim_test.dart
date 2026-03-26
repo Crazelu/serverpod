@@ -371,4 +371,118 @@ void main() {
     },
     rollbackDatabase: RollbackDatabase.disabled,
   );
+
+  withServerpod(
+    'Given two FutureCallManager instances with different heartbeat intervals'
+    'and a FutureCall that is due',
+    (sessionBuilder, _) {
+      late FutureCallManager futureCallManagerA;
+      late FutureCallManager futureCallManagerB;
+      late Session session;
+      late _CompleterFutureCall testCall;
+      final testCallName = 'long-running-test-call';
+      const heartbeatIntervalA = Duration(milliseconds: 800);
+      const heartbeatIntervalB = Duration(milliseconds: 100);
+
+      setUp(() async {
+        session = sessionBuilder.build();
+        final configA = FutureCallConfig(
+          scanInterval: Duration(milliseconds: 1),
+        );
+        final configB = FutureCallConfig(
+          scanInterval: Duration(milliseconds: 100),
+        );
+
+        futureCallManagerA = FutureCallManagerBuilder.fromTestSessionBuilder(
+          sessionBuilder,
+        ).withConfig(configA).withHeartbeatInterval(heartbeatIntervalA).build();
+
+        futureCallManagerB = FutureCallManagerBuilder.fromTestSessionBuilder(
+          sessionBuilder,
+        ).withConfig(configB).withHeartbeatInterval(heartbeatIntervalB).build();
+
+        testCall = _CompleterFutureCall();
+
+        futureCallManagerA.registerFutureCall(testCall, testCallName);
+        futureCallManagerB.registerFutureCall(testCall, testCallName);
+
+        final entry = FutureCallEntry(
+          name: testCallName,
+          serializedObject: SimpleData(num: 4).toString(),
+          time: DateTime.now().subtract(const Duration(seconds: 1)),
+          serverId: '1',
+          identifier: '',
+        );
+
+        await FutureCallEntry.db.insertRow(session, entry);
+      });
+
+      tearDown(() async {
+        await FutureCallEntry.db.deleteWhere(
+          session,
+          where: (entry) => entry.name.equals(testCallName),
+        );
+        await session.close();
+      });
+
+      group('when start is called', () {
+        setUp(() async {
+          await futureCallManagerA.start();
+          await futureCallManagerB.start();
+        });
+
+        tearDown(() async {
+          if (!testCall.completer.isCompleted) {
+            testCall.completer.complete();
+          }
+          await futureCallManagerA.stop(unregisterAll: true);
+          await futureCallManagerB.stop(unregisterAll: true);
+        });
+
+        test('then futureCallManagerA claims execution', () async {
+          // Wait for future call execution to be scheduled
+          await Future.delayed(const Duration(milliseconds: 100));
+
+          // ignore: invalid_use_of_visible_for_testing_member
+          expect(futureCallManagerA.heartbeatTimers, hasLength(1));
+          // ignore: invalid_use_of_visible_for_testing_member
+          expect(futureCallManagerB.heartbeatTimers, isEmpty);
+          testCall.completer.complete();
+        });
+
+        group("when futureCallManagerA's claim gets stale", () {
+          test(
+            'then futureCallManagerB reclaims execution',
+            () async {
+              // Wait for future call execution to be scheduled
+              await Future.delayed(const Duration(milliseconds: 100));
+
+              // Wait for futureCallManagerA's claim to be stale
+              // and for futureCallManagerB to acquire the claim
+              await Future.delayed(heartbeatIntervalB * 4);
+
+              // ignore: invalid_use_of_visible_for_testing_member
+              expect(futureCallManagerB.heartbeatTimers, hasLength(1));
+
+              testCall.completer.complete();
+            },
+          );
+
+          test(
+            "then futureCallManagerA's heartbeat update is aborted",
+            () async {
+              // Wait for futureCallManagerA's heartbeat update
+              // to detect claim loss.
+              await Future.delayed(heartbeatIntervalA * 2);
+
+              // ignore: invalid_use_of_visible_for_testing_member
+              expect(futureCallManagerA.heartbeatTimers, isEmpty);
+              testCall.completer.complete();
+            },
+          );
+        });
+      });
+    },
+    rollbackDatabase: RollbackDatabase.disabled,
+  );
 }

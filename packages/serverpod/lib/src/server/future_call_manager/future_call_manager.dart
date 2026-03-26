@@ -19,6 +19,10 @@ typedef InitializeFutureCall =
       String name,
     );
 
+/// A timer used to update heartbeat for a future call claim.
+@visibleForTesting
+typedef FutureCallClaimTimer = ({Timer timer, int claimId});
+
 /// The [FutureCallManager] is responsible for managing and executing
 /// [FutureCall]s in the [Serverpod] framework. A [FutureCall] is a task
 /// that is scheduled to run at a specific time in the future. These tasks
@@ -50,7 +54,7 @@ class FutureCallManager {
   bool _hasPendingStart = false;
 
   /// Collection of active claim heartbeat timers.
-  final List<Timer> _heartbeatTimers = [];
+  final List<FutureCallClaimTimer> _heartbeatTimers = [];
 
   /// Creates a new [FutureCallManager]. Typically, this is instantiated
   /// internally by the [Serverpod].
@@ -202,6 +206,10 @@ class FutureCallManager {
     await _scanner.stop();
     await _scheduler.drain();
     if (unregisterAll) _futureCalls.clear();
+    for (final entry in _heartbeatTimers) {
+      entry.timer.cancel();
+    }
+    _heartbeatTimers.clear();
   }
 
   /// Internal method to dispatch a list of [FutureCallEntry] objects to
@@ -232,15 +240,29 @@ class FutureCallManager {
 
   /// Collection of active claim heartbeat timers used for testing purposes.
   @visibleForTesting
-  List<Timer> get heartbeatTimers => _heartbeatTimers;
+  List<FutureCallClaimTimer> get heartbeatTimers => _heartbeatTimers;
+
+  /// Cancels any active timer associated with [claimId].
+  void _cancelTimerForClaim(int claimId) {
+    final entry = _heartbeatTimers
+        .where((t) => t.claimId == claimId)
+        .firstOrNull;
+
+    entry?.timer.cancel();
+    _heartbeatTimers.remove(entry);
+  }
+
+  /// Cancels [timer].
+  void _cancelTimer(Timer timer) {
+    final entry = _heartbeatTimers.where((t) => t.timer == timer).firstOrNull;
+    entry?.timer.cancel();
+    _heartbeatTimers.remove(entry);
+  }
 
   /// Updates hearbeat for a future call claim to keep it alive.
   /// Hearbeat is only updated if the claim is held by the
   /// running process.
-  Future<void> _updateHeartbeat({
-    required int claimId,
-    required Timer timer,
-  }) async {
+  Future<void> _updateHeartbeat(int claimId) async {
     try {
       final rows = await FutureCallClaimEntry.db.updateWhere(
         _internalSession,
@@ -248,7 +270,7 @@ class FutureCallManager {
         columnValues: (t) => [t.lastHeartbeatTime(DateTime.now().toUtc())],
       );
 
-      if (rows.isEmpty) timer.cancel();
+      if (rows.isEmpty) _cancelTimerForClaim(claimId);
     } catch (error, stackTrace) {
       _diagnosticsService.submitFrameworkException(error, stackTrace);
     }
@@ -276,25 +298,17 @@ class FutureCallManager {
     try {
       final entries = await _internalSession.db.transaction(
         (transaction) async {
-          try {
-            // Delete any existing stale claim to allow re-claiming.
-            // This will throw and return eagerly if a concurrent deletion
-            // is attempted allowing the process with the first transaction
-            // to correctly claim the future call.
-            await FutureCallClaimEntry.db.deleteWhere(
-              _internalSession,
-              transaction: transaction,
-              where: (t) =>
-                  t.futureCallId.equals(futureCallEntry.id) &
-                  (t.lastHeartbeatTime < _staleClaimThreshold),
-            );
-          } on DatabaseQueryException catch (error) {
-            if (error.code == PgErrorCode.serializationFailure) {
-              return null;
-            }
-          } catch (_) {
-            rethrow;
-          }
+          // Delete any existing stale claim to allow re-claiming.
+          // This will throw and return eagerly if a concurrent deletion
+          // is attempted allowing the instance with the first transaction
+          // to correctly claim the future call.
+          await FutureCallClaimEntry.db.deleteWhere(
+            _internalSession,
+            transaction: transaction,
+            where: (t) =>
+                t.futureCallId.equals(futureCallEntry.id) &
+                (t.lastHeartbeatTime < _staleClaimThreshold),
+          );
 
           final claim = FutureCallClaimEntry(
             futureCallId: futureCallEntry.id,
@@ -314,14 +328,18 @@ class FutureCallManager {
         ),
       );
 
-      final claimId = entries?.firstOrNull?.id;
+      final claimId = entries.firstOrNull?.id;
       if (claimId != null) {
         final timer = Timer.periodic(
           _heartbeatInterval,
-          (timer) => _updateHeartbeat(claimId: claimId, timer: timer),
+          (timer) => _updateHeartbeat(claimId),
         );
-        _heartbeatTimers.add(timer);
+        _heartbeatTimers.add((timer: timer, claimId: claimId));
         return timer;
+      }
+    } on DatabaseQueryException catch (error) {
+      if (error.code == PgErrorCode.serializationFailure) {
+        return null;
       }
     } catch (error, stackTrace) {
       _diagnosticsService.submitFrameworkException(error, stackTrace);
@@ -364,8 +382,7 @@ class FutureCallManager {
 
       await futureCallSession.close(error: error, stackTrace: stackTrace);
     } finally {
-      heartbeatTimer.cancel();
-      _heartbeatTimers.remove(heartbeatTimer);
+      _cancelTimer(heartbeatTimer);
       await FutureCallEntry.db.deleteWhere(
         _internalSession,
         where: (t) => t.id.equals(futureCallEntry.id),
