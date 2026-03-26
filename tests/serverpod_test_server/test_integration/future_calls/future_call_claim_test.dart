@@ -373,16 +373,16 @@ void main() {
   );
 
   withServerpod(
-    'Given two FutureCallManager instances with different heartbeat intervals'
-    'and a FutureCall that is due',
+    'Given a degraded and an active FutureCallManager '
+    'running concurrently and a FutureCall that is due',
     (sessionBuilder, _) {
-      late FutureCallManager futureCallManagerA;
-      late FutureCallManager futureCallManagerB;
+      late FutureCallManager degradedFutureCallManager;
+      late FutureCallManager activeFutureCallManager;
       late Session session;
       late _CompleterFutureCall testCall;
       final testCallName = 'long-running-test-call';
-      const heartbeatIntervalA = Duration(milliseconds: 800);
-      const heartbeatIntervalB = Duration(milliseconds: 100);
+      const degradedHeartbeatInterval = Duration(milliseconds: 800);
+      const activeHeartbeatInterval = Duration(milliseconds: 100);
 
       setUp(() async {
         session = sessionBuilder.build();
@@ -393,18 +393,28 @@ void main() {
           scanInterval: Duration(milliseconds: 100),
         );
 
-        futureCallManagerA = FutureCallManagerBuilder.fromTestSessionBuilder(
-          sessionBuilder,
-        ).withConfig(configA).withHeartbeatInterval(heartbeatIntervalA).build();
+        // We simulate a degraded instance with a long heartbeat interval.
+        degradedFutureCallManager =
+            FutureCallManagerBuilder.fromTestSessionBuilder(
+                  sessionBuilder,
+                )
+                .withConfig(configA)
+                .withHeartbeatInterval(degradedHeartbeatInterval)
+                .build();
 
-        futureCallManagerB = FutureCallManagerBuilder.fromTestSessionBuilder(
-          sessionBuilder,
-        ).withConfig(configB).withHeartbeatInterval(heartbeatIntervalB).build();
+        // We simulate an active instance with a shorter heartbeat interval.
+        activeFutureCallManager =
+            FutureCallManagerBuilder.fromTestSessionBuilder(
+                  sessionBuilder,
+                )
+                .withConfig(configB)
+                .withHeartbeatInterval(activeHeartbeatInterval)
+                .build();
 
         testCall = _CompleterFutureCall();
 
-        futureCallManagerA.registerFutureCall(testCall, testCallName);
-        futureCallManagerB.registerFutureCall(testCall, testCallName);
+        degradedFutureCallManager.registerFutureCall(testCall, testCallName);
+        activeFutureCallManager.registerFutureCall(testCall, testCallName);
 
         final entry = FutureCallEntry(
           name: testCallName,
@@ -415,9 +425,12 @@ void main() {
         );
 
         await FutureCallEntry.db.insertRow(session, entry);
+
+        await degradedFutureCallManager.start();
       });
 
       tearDown(() async {
+        await degradedFutureCallManager.stop(unregisterAll: true);
         await FutureCallEntry.db.deleteWhere(
           session,
           where: (entry) => entry.name.equals(testCallName),
@@ -425,62 +438,47 @@ void main() {
         await session.close();
       });
 
-      group('when start is called', () {
+      group('when scanning due future calls on the active instance', () {
         setUp(() async {
-          await futureCallManagerA.start();
-          await futureCallManagerB.start();
+          await activeFutureCallManager.start();
         });
 
         tearDown(() async {
           if (!testCall.completer.isCompleted) {
             testCall.completer.complete();
           }
-          await futureCallManagerA.stop(unregisterAll: true);
-          await futureCallManagerB.stop(unregisterAll: true);
+          await activeFutureCallManager.stop(unregisterAll: true);
         });
 
-        test('then futureCallManagerA claims execution', () async {
-          // Wait for future call execution to be scheduled
-          await Future.delayed(const Duration(milliseconds: 100));
+        test(
+          'then the active instance detects the stale heartbeat and reclaims the execution',
+          () async {
+            // Wait for future call execution to be scheduled
+            await Future.delayed(const Duration(milliseconds: 100));
 
-          // ignore: invalid_use_of_visible_for_testing_member
-          expect(futureCallManagerA.heartbeatTimers, hasLength(1));
-          // ignore: invalid_use_of_visible_for_testing_member
-          expect(futureCallManagerB.heartbeatTimers, isEmpty);
-          testCall.completer.complete();
-        });
+            // Wait for degradedFutureCallManager's claim to be stale
+            // and for activeFutureCallManager to acquire the claim
+            await Future.delayed(activeHeartbeatInterval * 4);
 
-        group("when futureCallManagerA's claim gets stale", () {
-          test(
-            'then futureCallManagerB reclaims execution',
-            () async {
-              // Wait for future call execution to be scheduled
-              await Future.delayed(const Duration(milliseconds: 100));
+            // ignore: invalid_use_of_visible_for_testing_member
+            expect(activeFutureCallManager.heartbeatTimers, hasLength(1));
 
-              // Wait for futureCallManagerA's claim to be stale
-              // and for futureCallManagerB to acquire the claim
-              await Future.delayed(heartbeatIntervalB * 4);
+            testCall.completer.complete();
+          },
+        );
 
-              // ignore: invalid_use_of_visible_for_testing_member
-              expect(futureCallManagerB.heartbeatTimers, hasLength(1));
+        test(
+          'then the heartbeat update is aborted on the degraded instance due to losing the claim',
+          () async {
+            // Wait for degradedFutureCallManager's heartbeat update
+            // to detect claim loss.
+            await Future.delayed(degradedHeartbeatInterval * 2);
 
-              testCall.completer.complete();
-            },
-          );
-
-          test(
-            "then futureCallManagerA's heartbeat update is aborted",
-            () async {
-              // Wait for futureCallManagerA's heartbeat update
-              // to detect claim loss.
-              await Future.delayed(heartbeatIntervalA * 2);
-
-              // ignore: invalid_use_of_visible_for_testing_member
-              expect(futureCallManagerA.heartbeatTimers, isEmpty);
-              testCall.completer.complete();
-            },
-          );
-        });
+            // ignore: invalid_use_of_visible_for_testing_member
+            expect(degradedFutureCallManager.heartbeatTimers, isEmpty);
+            testCall.completer.complete();
+          },
+        );
       });
     },
     rollbackDatabase: RollbackDatabase.disabled,

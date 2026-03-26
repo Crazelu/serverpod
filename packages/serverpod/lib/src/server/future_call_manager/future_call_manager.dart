@@ -259,8 +259,8 @@ class FutureCallManager {
     _heartbeatTimers.remove(entry);
   }
 
-  /// Updates hearbeat for a future call claim to keep it alive.
-  /// Hearbeat is only updated if the claim is held by the
+  /// Updates heartbeat for a future call claim to keep it alive.
+  /// Heartbeat is only updated if the claim is held by the
   /// running process.
   Future<void> _updateHeartbeat(int claimId) async {
     try {
@@ -337,11 +337,11 @@ class FutureCallManager {
         _heartbeatTimers.add((timer: timer, claimId: claimId));
         return timer;
       }
-    } on DatabaseQueryException catch (error) {
-      if (error.code == PgErrorCode.serializationFailure) {
+    } catch (error, stackTrace) {
+      if (error is DatabaseQueryException &&
+          error.code == PgErrorCode.serializationFailure) {
         return null;
       }
-    } catch (error, stackTrace) {
       _diagnosticsService.submitFrameworkException(error, stackTrace);
     }
     return null;
