@@ -353,20 +353,18 @@ void main() {
         test(
           'then heartbeat timer is cancelled after future call is executed',
           () async {
-            final timer = Timer.periodic(heartbeatInterval, (_) {});
-
-            // ignore: invalid_use_of_visible_for_testing_member
-            futureCallManager.setHeartbeatTimerForTesting(timer);
-
             // Wait for future call execution to be scheduled
             await Future.delayed(const Duration(milliseconds: 100));
 
             testCall.completer.complete();
+            // ignore: invalid_use_of_visible_for_testing_member
+            expect(futureCallManager.heartbeatTimers, hasLength(1));
             await testCall.completer.future;
 
             // Wait for cleanup to run
             await Future.delayed(const Duration(milliseconds: 100));
-            expect(timer.isActive, isFalse);
+            // ignore: invalid_use_of_visible_for_testing_member
+            expect(futureCallManager.heartbeatTimers, isEmpty);
           },
         );
       });

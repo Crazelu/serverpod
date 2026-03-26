@@ -49,8 +49,8 @@ class FutureCallManager {
   /// yet because there were no registered future calls at the time.
   bool _hasPendingStart = false;
 
-  /// Timer for claim heartbeat updates used for testing.
-  Timer? _heartbeatTimerOverride;
+  /// Collection of active claim heartbeat timers.
+  final List<Timer> _heartbeatTimers = [];
 
   /// Creates a new [FutureCallManager]. Typically, this is instantiated
   /// internally by the [Serverpod].
@@ -230,12 +230,9 @@ class FutureCallManager {
     _scheduler.addTaskCallbacks(callbacks.nonNulls.toList());
   }
 
-  /// Sets a heartbeat timer for test purposes.
-  /// If set, this timer will be used for updating claim heartbeat.
+  /// Collection of active claim heartbeat timers used for testing purposes.
   @visibleForTesting
-  void setHeartbeatTimerForTesting(Timer timer) {
-    _heartbeatTimerOverride = timer;
-  }
+  List<Timer> get heartbeatTimers => _heartbeatTimers;
 
   /// Updates hearbeat for a future call claim to keep it alive.
   /// Hearbeat is only updated if the claim is held by the
@@ -276,7 +273,6 @@ class FutureCallManager {
   Future<Timer?> _claimFutureCallAndStartHeartbeatTimer(
     FutureCallEntry futureCallEntry,
   ) async {
-    if (_heartbeatTimerOverride != null) return _heartbeatTimerOverride;
     try {
       final entries = await _internalSession.db.transaction(
         (transaction) async {
@@ -320,10 +316,12 @@ class FutureCallManager {
 
       final claimId = entries?.firstOrNull?.id;
       if (claimId != null) {
-        return Timer.periodic(
+        final timer = Timer.periodic(
           _heartbeatInterval,
           (timer) => _updateHeartbeat(claimId: claimId, timer: timer),
         );
+        _heartbeatTimers.add(timer);
+        return timer;
       }
     } catch (error, stackTrace) {
       _diagnosticsService.submitFrameworkException(error, stackTrace);
@@ -367,6 +365,7 @@ class FutureCallManager {
       await futureCallSession.close(error: error, stackTrace: stackTrace);
     } finally {
       heartbeatTimer.cancel();
+      _heartbeatTimers.remove(heartbeatTimer);
       await FutureCallEntry.db.deleteWhere(
         _internalSession,
         where: (t) => t.id.equals(futureCallEntry.id),
