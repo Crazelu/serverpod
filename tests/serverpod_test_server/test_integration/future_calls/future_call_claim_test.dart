@@ -430,6 +430,9 @@ void main() {
       });
 
       tearDown(() async {
+        if (!testCall.completer.isCompleted) {
+          testCall.completer.complete();
+        }
         await degradedFutureCallManager.stop(unregisterAll: true);
         await FutureCallEntry.db.deleteWhere(
           session,
