@@ -117,8 +117,82 @@ class FutureCalls extends _i1.FutureCallDispatch<_FutureCallRef> {
   }
 
   @override
+  _i1.RecurringFutureCallDispatch<_FutureCallRef> callRecurring({
+    String? identifier,
+  }) {
+    return _RecurringFutureCallDispatchImpl(
+      _effectiveFutureCallManager,
+      _effectiveServerId,
+      identifier,
+    );
+  }
+
+  @override
   Future<void> cancel(String identifier) async {
     await _effectiveFutureCallManager.cancelFutureCall(identifier);
+  }
+}
+
+class _RecurringFutureCallDispatchImpl
+    extends _i1.RecurringFutureCallDispatch<_FutureCallRef> {
+  _RecurringFutureCallDispatchImpl(
+    this._futureCallManager,
+    this._serverId,
+    this._identifier,
+  );
+
+  final _i1.FutureCallManager _futureCallManager;
+
+  final String _serverId;
+
+  final String? _identifier;
+
+  @override
+  _FutureCallRef cron(String cronExpression) {
+    return _FutureCallRef(
+      (name, object) {
+        return _futureCallManager.scheduleFutureCall(
+          name,
+          object,
+          _i1.Cron.parse(cronExpression).nextTime(),
+          _serverId,
+          _identifier,
+          scheduling: _i1.CronFutureCallScheduling(cron: cronExpression),
+        );
+      },
+    );
+  }
+
+  @override
+  _FutureCallRef every(
+    Duration interval, {
+    DateTime? start,
+  }) {
+    final now = DateTime.now().toUtc();
+    DateTime effectiveStart = now.add(interval);
+
+    if (start != null) {
+      if (start.isBefore(now))
+        effectiveStart = now;
+      else
+        effectiveStart = start.toUtc();
+    }
+
+    return _FutureCallRef(
+      (name, object) {
+        return _futureCallManager.scheduleFutureCall(
+          name,
+          object,
+          effectiveStart,
+          _serverId,
+          _identifier,
+          scheduling: _i1.IntervalFutureCallScheduling(
+            interval: interval,
+            start: start,
+          ),
+        );
+      },
+    );
   }
 }
 

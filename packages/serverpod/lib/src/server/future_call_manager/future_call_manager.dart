@@ -156,13 +156,15 @@ class FutureCallManager {
   /// - [time]: The time at which the future call should execute.
   /// - [serverId]: The ID of the server responsible for executing the call.
   /// - [identifier]: An optional unique identifier for the call, used for cancellation.
+  /// - [scheduling]: An optional scheduling configuration for recurring calls.
   Future<void> scheduleFutureCall(
     String name,
     SerializableModel? object,
     DateTime time,
     String serverId,
-    String? identifier,
-  ) async {
+    String? identifier, {
+    FutureCallScheduling? scheduling,
+  }) async {
     String? serialization;
     if (object != null) {
       serialization = SerializationManager.encode(object.toJson());
@@ -174,6 +176,7 @@ class FutureCallManager {
       time: time,
       serverId: serverId,
       identifier: identifier,
+      scheduling: scheduling,
     );
 
     var session = _internalSession;
@@ -345,6 +348,8 @@ class FutureCallManager {
     // claim will run the call and clean up after running.
     if (heartbeatTimer == null) return;
 
+    DateTime? nextRunTime = _getNextRecurringRunTime(futureCallEntry);
+
     final futureCallSession = _sessionBuilder(futureCallEntry.name);
 
     try {
@@ -372,7 +377,56 @@ class FutureCallManager {
         _internalSession,
         where: (t) => t.id.equals(futureCallEntry.id),
       );
+
+      // Handle recurring future calls
+      await _scheduleNextRecurringCall(futureCallEntry, nextRunTime);
     }
+  }
+
+  /// Returns the next time the [futureCallEntry] should run
+  /// if it is a recurring future call.
+  /// Otherwise, returns null.
+  DateTime? _getNextRecurringRunTime(FutureCallEntry futureCallEntry) {
+    var scheduling = futureCallEntry.scheduling;
+    if (scheduling == null) return null;
+
+    return switch (scheduling) {
+      CronFutureCallScheduling(cron: var cron) => Cron.parse(cron).nextTime(),
+      IntervalFutureCallScheduling(interval: var interval, start: var start) =>
+        () {
+          final now = DateTime.now().toUtc();
+          if (start != null && start.isBefore(now)) {
+            final difference = now.difference(start);
+            final count = (difference.inMilliseconds / interval.inMilliseconds)
+                .ceil();
+            return now.add(interval * count);
+          }
+          return now.add(interval);
+        }(),
+    };
+  }
+
+  /// Schedules [futureCallEntry] for its next recurring run at [nextRunTime].
+  /// This method does nothing if [futureCallEntry] is not recurring or [nextRunTime] is null.
+  Future<void> _scheduleNextRecurringCall(
+    FutureCallEntry futureCallEntry,
+    DateTime? nextRunTime,
+  ) async {
+    var scheduling = futureCallEntry.scheduling;
+    if (scheduling == null || nextRunTime == null) return;
+
+    if (scheduling is IntervalFutureCallScheduling) {
+      scheduling = scheduling.copyWith(start: null);
+    }
+
+    await FutureCallEntry.db.insertRow(
+      _internalSession,
+      futureCallEntry.copyWith(
+        id: null,
+        time: nextRunTime,
+        scheduling: scheduling,
+      ),
+    );
   }
 
   /// Returns `true` if the server is configured to check for broken

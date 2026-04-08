@@ -21,69 +21,100 @@ Recurring call entries will store a cron expression. After execution, the cron e
 
 ### Database Schema
 
-The `serverpod_future_call` table schema will be extended to include two new fields.
+The `serverpod_future_call` table schema will be extended to include a new `scheduling` field.
 
 ```yaml
 class: FutureCallEntry
 table: serverpod_future_call
 fields:
-  ### Type of future call
-  type: FutureCallType
-
-  ### Cron expression for recurring calls
-  cron: String?
+  ### Specifies how recurring calls should be scheduled.
+  scheduling: FutureCallScheduling?
 ```
 
 ```yaml
-### Represents different future call types.
-enum: FutureCallType
-serialized: byIndex
-default: oneOff
-values:
-  - oneOff
-  - recurring
+### Generic interface that specifies how recurring calls should be scheduled.
+class: FutureCallScheduling
+sealed: true
+```
+
+```yaml
+## A recurring future call scheduling option that uses cron expression
+class: CronFutureCallScheduling
+extends: FutureCallScheduling
+fields:
+  ### Cron expression for recurring calls
+  cron: String
+```
+
+```yaml
+## A recurring future call scheduling option that uses a Duration interval
+class: IntervalFutureCallScheduling
+extends: FutureCallScheduling
+fields:
+  ### Interval for recurring calls
+  duration: Duration
 ```
 
 ### Scheduling API
 
-A new `recurring` method will be added to `FutureCallDispatch`.
+A new `RecurringFutureCallDispatch` API will be introduced to support cron and interval scheduling for recurring calls.
 
 ```dart
-/// Calls a [FutureCall] at a recurring interval defined by [cronExpression],
-/// optionally passing a [String] identifier.
-T recurring(String cronExpression, {String? identifier}) {}
+/// Provides type-safe access to recurring future calls on the server.
+/// Typically, this class is overriden by a generated class.
+abstract class RecurringFutureCallDispatch<T> {
+  /// Calls a [FutureCall] at a recurring interval defined by [cronExpression].
+  T cron(String cronExpression);
+
+  /// Calls a [FutureCall] at a recurring interval defined by [interval],
+  /// optionally passing a [start] time.
+  /// If [start] is in the past, the [FutureCall] is first called immediately
+  /// and then subsequently called recurrently on [interval].
+  T every(Duration interval, {DateTime? start});
+}
+```
+
+This API will be accessible through a new `callRecurring` method from `FutureCallDispatch`.
+
+```dart
+/// Calls a [FutureCall] at a recurring interval, optionally passing a [String] identifier.
+T callRecurring({String? identifier}) {}
 ```
 
 Developers can then schedule recurring calls using the generated type-safe API.
 
 ```dart
-await pod.futureCalls.recurring("0 * * * *").example.runTask();
+await pod.futureCalls.callRecurring().cron("0 * * * *").example.runTask();
 ```
 
-To simplify common use cases, `FutureCallSchedule` utility methods will be introduced such as:
-
 ```dart
-FutureCallSchedule.everyMinute(15); // */15 * * * *
-FutureCallSchedule.everyHour(12); // * 12 * * *
-FutureCallSchedule.daily(); // 0 0 * * *
-FutureCallSchedule.annually(); // * * 1 1 *
-```
-
-These utility methods will return valid cron expressions that interoperate with the `recurring` method.
-
-```dart
-await pod.futureCalls.recurring(FutureCallSchedule.daily()).example.runTask();
+await pod.futureCalls
+    .callRecurring()
+    .every(
+      const Duration(hours: 1),
+      start: DateTime.now().add(Duration(hours: 1)),
+    )
+    .example
+    .runTask();
 ```
 
 ### Execution Flow
 
 Existing logic for scanning and scheduling future calls will remain unchanged and only add a special case handling for running recurring future calls.
 
-After running a recurring future call, the entry's `time` must be updated with the next run time derived from parsing the cron expression. The next run time is computed relative to the current time and not the last scheduled time for the `FutureCallEntry`. This is to ensure the next time is always in the future.
+Before running a recurring future call, the next run time is derived and a new entry is inserted into the database with that time when the future call's execution is completed. The next run time is computed relative to the current time and not the last scheduled time for the `FutureCallEntry`. This is to ensure the next time is always in the future.
 
-Unlike one-off calls, recurring future calls will not be deleted after the execution is completed.
+```dart
+if (futureCallEntry.scheduling != null) {
+  final nextRunTime = _computeNextRunTime(futureCallEntry.scheduling);
+  await FutureCallEntry.db.insert(
+    _internalSession,
+    futureCallEntry.copyWith(id: null, time: nextRunTime),
+  );
+}
+```
 
-A cron parser will be implemented to parse cron expressions and compute the next execution time. The parser will support 5-field and 6-field cron expressions.
+For cron scheduling, a cron parser will be implemented to parse cron expressions and compute the next execution time. The parser will support 5-field and 6-field cron expressions.
 
 In the future, the parser may be updated to support special named values such as `L` (for last day), `JAN`, `MON`, etc.
 
@@ -107,7 +138,3 @@ Existing future calls continue to work unchanged because:
 - the scan query remains unchanged
 - existing entries default to type = oneOff
 - new fields are optional
-
-## Open Questions
-
-1. Do we depend on the existing `cron` package? It has not been updated in 10 months and seems to have slow pace on maintenance. The alternative is to implement a cron parser internally at the cost of maintenance.

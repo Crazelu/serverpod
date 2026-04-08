@@ -86,7 +86,7 @@ void main() {
   );
 
   group(
-    'Given protocol definition with future calls when generating server files',
+    'Given protocol definition with a future call when generating server files',
     () {
       var futureCallName = 'testing';
       late Map<String, String> codeMap;
@@ -191,6 +191,154 @@ void main() {
                 contains(
                   '${futureCallName.pascalCase}SayHelloFutureCall',
                 ),
+              );
+            },
+          );
+
+          test(
+            'has an implementation of RecurringFutureCallDispatch',
+            () {
+              expect(
+                futureCallsFile,
+                matches(
+                  r'class _RecurringFutureCallDispatchImpl\n'
+                  r'    extends _i\d.RecurringFutureCallDispatch<_FutureCallRef> \{\n',
+                ),
+              );
+            },
+          );
+
+          group(
+            'then RecurringFutureCallDispatch implementation',
+            () {
+              test(
+                'has an overriden cron method with a cronExpression parameter',
+                () {
+                  expect(
+                    futureCallsFile,
+                    matches(
+                      r'class _RecurringFutureCallDispatchImpl\n'
+                      r'    extends _i\d.RecurringFutureCallDispatch<_FutureCallRef> \{\n'
+                      r'[\s\S]*'
+                      r'  \@override\n'
+                      r'  _FutureCallRef cron\(String cronExpression\) \{\n',
+                    ),
+                  );
+                },
+              );
+
+              test(
+                'then the overriden cron method schedules future call with CronFutureCallScheduling',
+                () {
+                  expect(
+                    futureCallsFile,
+                    matches(
+                      r'class _RecurringFutureCallDispatchImpl\n'
+                      r'    extends _i\d.RecurringFutureCallDispatch<_FutureCallRef> \{\n'
+                      r'[\s\S]*'
+                      r'  \@override\n'
+                      r'  _FutureCallRef cron\(String cronExpression\) \{\n'
+                      r'    return _FutureCallRef\(\n'
+                      r'      \(name, object\) \{\n'
+                      r'        return _futureCallManager.scheduleFutureCall\(\n'
+                      r'          name,\n'
+                      r'          object,\n'
+                      r'          _i\d.CronParser.getNextRunTime\(cronExpression\),\n'
+                      r'          _serverId,\n'
+                      r'          _identifier,\n'
+                      r'          scheduling: _i\d.CronFutureCallScheduling\(cron: cronExpression\),\n'
+                      r'        \);\n'
+                      r'      \},\n'
+                      r'    \);\n'
+                      r'  \}\n',
+                    ),
+                  );
+                },
+              );
+
+              test(
+                'has an overriden every method with a required interval parameter and an optional start parameter',
+                () {
+                  expect(
+                    futureCallsFile,
+                    matches(
+                      r'class _RecurringFutureCallDispatchImpl\n'
+                      r'    extends _i\d.RecurringFutureCallDispatch<_FutureCallRef> \{\n'
+                      r'[\s\S]*'
+                      r'  \@override\n'
+                      r'  _FutureCallRef every\(\n'
+                      r'    Duration interval, \{\n'
+                      r'    DateTime\? start,\n'
+                      r'  \}\) \{\n',
+                    ),
+                  );
+                },
+              );
+
+              group(
+                'then overriden every method',
+                () {
+                  test(
+                    'contains start time computation',
+                    () {
+                      expect(
+                        futureCallsFile,
+                        matches(
+                          r'class _RecurringFutureCallDispatchImpl\n'
+                          r'    extends _i\d.RecurringFutureCallDispatch<_FutureCallRef> \{\n'
+                          r'[\s\S]*'
+                          r'  \@override\n'
+                          r'  _FutureCallRef every\(\n'
+                          r'    Duration interval, \{\n'
+                          r'    DateTime\? start,\n'
+                          r'  \}\) \{\n'
+                          r'    final now = DateTime.now\(\).toUtc\(\);\n'
+                          r'    DateTime effectiveStart = now.add\(interval\);\n'
+                          r'\n'
+                          r'    if \(start != null\) \{\n'
+                          r'      if \(start.isBefore\(now\)\)\n'
+                          r'        effectiveStart = now;\n'
+                          r'      else\n'
+                          r'        effectiveStart = start.toUtc\(\);\n'
+                          r'    \}\n',
+                        ),
+                      );
+                    },
+                  );
+
+                  test(
+                    'schedules future call with IntervalFutureCallScheduling',
+                    () {
+                      expect(
+                        futureCallsFile,
+                        matches(
+                          r'class _RecurringFutureCallDispatchImpl\n'
+                          r'    extends _i\d.RecurringFutureCallDispatch<_FutureCallRef> \{\n'
+                          r'[\s\S]*'
+                          r'  \@override\n'
+                          r'  _FutureCallRef every\(\n'
+                          r'    Duration interval, \{\n'
+                          r'    DateTime\? start,\n'
+                          r'  \}\) \{\n'
+                          r'[\s\S]*'
+                          r'    return _FutureCallRef\(\n'
+                          r'      \(name, object\) \{\n'
+                          r'        return _futureCallManager.scheduleFutureCall\(\n'
+                          r'          name,\n'
+                          r'          object,\n'
+                          r'          effectiveStart,\n'
+                          r'          _serverId,\n'
+                          r'          _identifier,\n'
+                          r'          scheduling: _i\d.IntervalFutureCallScheduling\(interval: interval\),\n'
+                          r'        \);\n'
+                          r'      \},\n'
+                          r'    \);\n'
+                          r'  \}\n',
+                        ),
+                      );
+                    },
+                  );
+                },
               );
             },
           );
