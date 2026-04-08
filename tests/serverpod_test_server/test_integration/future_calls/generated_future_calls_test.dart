@@ -4,6 +4,7 @@ import 'package:serverpod_test_server/src/generated/future_calls.dart';
 import 'package:test/test.dart';
 
 import '../test_tools/serverpod_test_tools.dart';
+import '../utils/date_time_matcher.dart';
 import '../utils/future_call_manager_builder.dart';
 
 void main() {
@@ -155,6 +156,190 @@ void main() {
 
           expect(futureCallEntries, hasLength(1));
           expect(futureCallEntries.firstOrNull?.time, time);
+        },
+      );
+
+      group(
+        'when scheduling a recurring future call with a valid cron expression',
+        () {
+          final cronExpression = '0 0 1 1 *';
+
+          setUp(() async {
+            await pod.futureCalls
+                .callRecurring()
+                .cron(cronExpression)
+                .testGeneratedCall
+                .hello('Lucky');
+          });
+
+          test(
+            'then a FutureCallEntry is added to the database with CronFutureCallScheduling',
+            () async {
+              final futureCallEntries = await FutureCallEntry.db.find(
+                session,
+                where: (entry) => entry.name.equals(testCallName),
+              );
+
+              expect(futureCallEntries, hasLength(1));
+              expect(
+                futureCallEntries.first.scheduling,
+                isA<CronFutureCallScheduling>().having(
+                  (s) => s.cron,
+                  'cron',
+                  cronExpression,
+                ),
+              );
+            },
+          );
+
+          test(
+            'then FutureCallEntry in the database has the correct time',
+            () async {
+              final now = DateTime.now().toUtc();
+              final futureCallEntries = await FutureCallEntry.db.find(
+                session,
+                where: (entry) => entry.name.equals(testCallName),
+              );
+
+              expect(
+                futureCallEntries.first.time,
+                matchesDate(now.year + 1, 1, 1, 0, 0),
+              );
+            },
+          );
+        },
+      );
+
+      test(
+        'when scheduling a recurring future call with an invalid cron expression, '
+        'then an exception is thrown and no FutureCallEntry is added to the database',
+        () async {
+          final invalidCronExpression = '* * * *';
+
+          expect(
+            () async {
+              await pod.futureCalls
+                  .callRecurring()
+                  .cron(invalidCronExpression)
+                  .testGeneratedCall
+                  .hello('Lucky');
+            },
+            throwsA(
+              isA<CronFormatException>().having(
+                (e) => e.message,
+                'message',
+                contains('Invalid cron expression: $invalidCronExpression'),
+              ),
+            ),
+          );
+
+          final futureCallEntries = await FutureCallEntry.db.find(
+            session,
+            where: (entry) => entry.name.equals(testCallName),
+          );
+
+          expect(futureCallEntries, isEmpty);
+        },
+      );
+
+      test(
+        'when scheduling a recurring future call with interval, '
+        'then a FutureCallEntry is added to the database with IntervalFutureCallScheduling',
+        () async {
+          final interval = Duration(minutes: 5);
+          final start = DateTime.now().toUtc();
+
+          await pod.futureCalls
+              .callRecurring()
+              .every(interval, start: start)
+              .testGeneratedCall
+              .hello('Lucky');
+
+          final futureCallEntries = await FutureCallEntry.db.find(
+            session,
+            where: (entry) => entry.name.equals(testCallName),
+          );
+
+          expect(futureCallEntries, hasLength(1));
+          expect(
+            futureCallEntries.first.scheduling,
+            isA<IntervalFutureCallScheduling>().having(
+              (s) => (s.interval, s.start),
+              'interval',
+              (interval, start),
+            ),
+          );
+        },
+      );
+
+      test(
+        'when scheduling a recurring future call with interval and no start DateTime, '
+        'then a FutureCallEntry is added to the database with time set to current time plus the interval',
+        () async {
+          final interval = Duration(minutes: 5);
+
+          await pod.futureCalls
+              .callRecurring()
+              .every(interval)
+              .testGeneratedCall
+              .hello('Lucky');
+
+          final futureCallEntries = await FutureCallEntry.db.find(
+            session,
+            where: (entry) => entry.name.equals(testCallName),
+          );
+
+          expect(futureCallEntries, hasLength(1));
+          expect(
+            futureCallEntries.first.time.difference(DateTime.now().toUtc()),
+            greaterThan(Duration(minutes: 4, seconds: 55)),
+          );
+        },
+      );
+
+      test(
+        'when scheduling a recurring future call with interval and a past start DateTime, '
+        'then a FutureCallEntry is added to the database with time set to current time',
+        () async {
+          final interval = Duration(minutes: 5);
+          final start = DateTime.now().toUtc().subtract(Duration(hours: 1));
+
+          await pod.futureCalls
+              .callRecurring()
+              .every(interval, start: start)
+              .testGeneratedCall
+              .hello('Lucky');
+
+          final futureCallEntries = await FutureCallEntry.db.find(
+            session,
+            where: (entry) => entry.name.equals(testCallName),
+          );
+
+          expect(futureCallEntries, hasLength(1));
+          expect(futureCallEntries.first.time.isAfter(start), isTrue);
+        },
+      );
+
+      test(
+        'when scheduling a recurring future call with interval and a future start DateTime, '
+        'then a FutureCallEntry is added to the database with time set to start time',
+        () async {
+          final interval = Duration(minutes: 5);
+          final start = DateTime.now().toUtc().add(Duration(hours: 1));
+
+          await pod.futureCalls
+              .callRecurring()
+              .every(interval, start: start)
+              .testGeneratedCall
+              .hello('Lucky');
+
+          final futureCallEntries = await FutureCallEntry.db.find(
+            session,
+            where: (entry) => entry.name.equals(testCallName),
+          );
+
+          expect(futureCallEntries, hasLength(1));
+          expect(futureCallEntries.first.time, start);
         },
       );
     },
