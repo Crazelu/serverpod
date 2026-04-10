@@ -255,7 +255,7 @@ void main() {
       );
 
       group(
-        'when scheduling a recurring future call with interval and no start DateTime',
+        'when scheduling a recurring future call with interval',
         () {
           final now = DateTime.now().toUtc();
           final interval = Duration(minutes: 5);
@@ -330,7 +330,7 @@ void main() {
       );
 
       test(
-        'when scheduling a recurring future call with interval and a past start DateTime, '
+        'when scheduling a recurring future call with interval and start DateTime in the past, '
         'then a FutureCallEntry is added to the database with time set to current time',
         () async {
           final now = DateTime.now().toUtc();
