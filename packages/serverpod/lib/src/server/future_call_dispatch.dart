@@ -28,7 +28,13 @@ abstract class RecurringFutureCallDispatch<T> {
 
   /// Calls a [FutureCall] at a recurring interval defined by [interval],
   /// optionally passing a [start] time.
-  /// If [start] is in the past, the [FutureCall] is first called immediately
-  /// and then subsequently called recurrently every [interval].
+  ///
+  /// [start] defines the exact moment in which the [FutureCall] will run
+  /// on every interval. For example, if [interval] is 1 hour and [start] is
+  /// 15 minutes past the hour, the [FutureCall] will run at 00:15, 01:15, 02:15, etc.
+  ///
+  /// If [start] is not provided, the first run occurs after one [interval].
+  /// If [start] is in the past, the [FutureCall] will run immediately
+  /// and then will subsequently run at the next [interval] in the future.
   T every(Duration interval, {DateTime? start});
 }
