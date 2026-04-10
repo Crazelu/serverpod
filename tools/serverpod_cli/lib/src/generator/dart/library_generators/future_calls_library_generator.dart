@@ -389,12 +389,16 @@ extension FutureCallsLibraryGenerator on LibraryGenerator {
                   ),
                 )
                 ..body = Code.scope((allocate) {
+                  final clock = allocate(
+                    refer('clock', 'package:clock/clock.dart'),
+                  );
+
                   final intervalScheduling = allocate(
                     refer('IntervalFutureCallScheduling', serverpodUrl(true)),
                   );
 
                   return '''
-                    final now = DateTime.now().toUtc();
+                    final now = $clock.now().toUtc();
                     DateTime effectiveStart = now.add(interval);
 
                     if (start != null) {
