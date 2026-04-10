@@ -6,6 +6,7 @@ import 'package:serverpod/serverpod.dart';
 import 'package:serverpod_test_server/src/generated/simple_data.dart';
 import 'package:serverpod_test_server/test_util/logging_utils.dart';
 import 'package:serverpod_test_server/test_util/test_serverpod.dart';
+import 'package:serverpod_test_server/test_util/test_tags.dart';
 import 'package:test/test.dart';
 import 'package:serverpod/src/server/serverpod.dart';
 import 'package:serverpod/src/server/command_line_args.dart';
@@ -18,8 +19,9 @@ class _SimpleFutureCall extends FutureCall<SimpleData> {
 
 void main() {
   group(
-    'Given a Serverpod server instance with default config'
+    'Given a Serverpod server instance with default config '
     'and valid registered future calls in the database',
+    tags: [TestTags.concurrencyOneTestTag],
     () {
       late Serverpod server;
       late Session session;
@@ -74,8 +76,9 @@ void main() {
   );
 
   group(
-    'Given a Serverpod server instance with default config and at least 1000'
+    'Given a Serverpod server instance with default config and at least 1000 '
     'future calls in the database containing unregistered and broken future calls',
+    tags: [TestTags.concurrencyOneTestTag],
     () {
       late Serverpod server;
       late Session session;
@@ -110,59 +113,63 @@ void main() {
         await server.shutdown(exitProcess: false);
       });
 
-      group('when starting Serverpod', () {
-        setUp(() async {
-          await server.start();
-        });
+      group(
+        'when starting Serverpod',
+        () {
+          setUp(() async {
+            await server.start();
+          });
 
-        test(
-          'then unregistered and broken future calls are not logged',
-          () async {
-            await server.internalLoggingSession.close();
+          test(
+            'then unregistered and broken future calls are not logged',
+            () async {
+              await server.internalLoggingSession.close();
 
-            final logs = await LoggingUtil.findAllLogs(session);
-            final logMessages =
-                logs.lastOrNull?.logs.map((e) => e.message).toList() ?? [];
+              final logs = await LoggingUtil.findAllLogs(session);
+              final logMessages =
+                  logs.lastOrNull?.logs.map((e) => e.message).toList() ?? [];
 
-            expect(
-              logMessages.where((message) => message.contains(r'TestCall\d')),
-              isEmpty,
-            );
-          },
-        );
+              expect(
+                logMessages.where((message) => message.contains(r'TestCall\d')),
+                isEmpty,
+              );
+            },
+          );
 
-        test(
-          'then unregistered and broken future calls are not deleted from the database',
-          () async {
-            final entries = await FutureCallEntry.db.find(session);
-            expect(entries, hasLength(futureCallsCount));
-          },
-        );
+          test(
+            'then unregistered and broken future calls are not deleted from the database',
+            () async {
+              final entries = await FutureCallEntry.db.find(session);
+              expect(entries, hasLength(futureCallsCount));
+            },
+          );
 
-        test(
-          'then a warning is logged about skipping the check for broken future calls',
-          () async {
-            await server.internalLoggingSession.close();
-            final logs = await LoggingUtil.findAllLogs(session);
-            final logEntry = logs.last.logs.first;
+          test(
+            'then a warning is logged about skipping the check for broken future calls',
+            () async {
+              await server.internalLoggingSession.close();
+              final logs = await LoggingUtil.findAllLogs(session);
+              final logEntry = logs.last.logs.first;
 
-            expect(
-              logEntry.message,
-              matches(
-                'Skipping automatic check for broken future calls due to high number of future calls in the database. '
-                'Enable FutureCallConfig.checkBrokenCalls to always perform the check, regardless of the number of future calls. '
-                'Optionally enable FutureCallConfig.deleteBrokenCalls to automatically delete broken future calls.',
-              ),
-            );
-          },
-        );
-      });
+              expect(
+                logEntry.message,
+                matches(
+                  'Skipping automatic check for broken future calls due to high number of future calls in the database. '
+                  'Enable FutureCallConfig.checkBrokenCalls to always perform the check, regardless of the number of future calls. '
+                  'Optionally enable FutureCallConfig.deleteBrokenCalls to automatically delete broken future calls.',
+                ),
+              );
+            },
+          );
+        },
+      );
     },
   );
 
   group(
-    'Given a Serverpod server instance with default config and less than 1000'
+    'Given a Serverpod server instance with default config and less than 1000 '
     'future calls in the database containing unregistered and broken future calls',
+    tags: [TestTags.concurrencyOneTestTag],
     () {
       late Serverpod server;
       late Session session;
@@ -197,57 +204,61 @@ void main() {
         await server.shutdown(exitProcess: false);
       });
 
-      group('when starting Serverpod', () {
-        setUp(() async {
-          await server.start();
-        });
+      group(
+        'when starting Serverpod',
+        () {
+          setUp(() async {
+            await server.start();
+          });
 
-        test(
-          'then unregistered future calls are logged',
-          () async {
-            await server.internalLoggingSession.close();
-            final logs = await LoggingUtil.findAllLogs(session);
-            final logEntry = logs.last.logs.first;
+          test(
+            'then unregistered future calls are logged',
+            () async {
+              await server.internalLoggingSession.close();
+              final logs = await LoggingUtil.findAllLogs(session);
+              final logEntry = logs.last.logs.first;
 
-            expect(
-              logEntry.message,
-              matches(
-                r'Unregistered future call: \{.*\"name\":\s*\"TestCall0\".*\}\n.*',
-              ),
-            );
-          },
-        );
+              expect(
+                logEntry.message,
+                matches(
+                  r'Unregistered future call: \{.*\"name\":\s*\"TestCall0\".*\}\n.*',
+                ),
+              );
+            },
+          );
 
-        test(
-          'then broken future calls are logged',
-          () async {
-            await server.internalLoggingSession.close();
-            final logs = await LoggingUtil.findAllLogs(session);
-            final logEntry = logs.last.logs.first;
+          test(
+            'then broken future calls are logged',
+            () async {
+              await server.internalLoggingSession.close();
+              final logs = await LoggingUtil.findAllLogs(session);
+              final logEntry = logs.last.logs.first;
 
-            expect(
-              logEntry.message,
-              matches(
-                r'.*Future call failed deserialization. Error: .* Entry: \{.*\"name\":\s*\"TestCall1\".*\}\n',
-              ),
-            );
-          },
-        );
+              expect(
+                logEntry.message,
+                matches(
+                  r'.*Future call failed deserialization. Error: .* Entry: \{.*\"name\":\s*\"TestCall1\".*\}\n',
+                ),
+              );
+            },
+          );
 
-        test(
-          'then unregistered and broken future calls are not deleted from the database',
-          () async {
-            final entries = await FutureCallEntry.db.find(session);
-            expect(entries, hasLength(futureCallsCount));
-          },
-        );
-      });
+          test(
+            'then unregistered and broken future calls are not deleted from the database',
+            () async {
+              final entries = await FutureCallEntry.db.find(session);
+              expect(entries, hasLength(futureCallsCount));
+            },
+          );
+        },
+      );
     },
   );
 
   group(
-    'Given a Serverpod server instance with checkBrokenCalls enabled'
+    'Given a Serverpod server instance with checkBrokenCalls enabled '
     'in future call config and database contains unregistered broken future calls',
+    tags: [TestTags.concurrencyOneTestTag],
     () {
       late Serverpod server;
       late Session session;
@@ -286,53 +297,57 @@ void main() {
         await server.shutdown(exitProcess: false);
       });
 
-      group('when starting Serverpod', () {
-        setUp(() async {
-          await server.start();
-        });
+      group(
+        'when starting Serverpod',
+        () {
+          setUp(() async {
+            await server.start();
+          });
 
-        test(
-          'then unregistered future calls are logged',
-          () async {
-            await server.internalLoggingSession.close();
-            final logs = await LoggingUtil.findAllLogs(session);
-            final logEntry = logs.last.logs.first;
+          test(
+            'then unregistered future calls are logged',
+            () async {
+              await server.internalLoggingSession.close();
+              final logs = await LoggingUtil.findAllLogs(session);
+              final logEntry = logs.last.logs.first;
 
-            expect(logEntry.logLevel, LogLevel.warning);
-            expect(
-              logEntry.message,
-              matches(
-                r'Unregistered future call: \{.*\"name\":\s*\"TestCall0\".*\}\n'
-                r'Unregistered future call: \{.*\"name\":\s*\"TestCall1\".*\}\n.*',
-              ),
-            );
-          },
-        );
+              expect(logEntry.logLevel, LogLevel.warning);
+              expect(
+                logEntry.message,
+                matches(
+                  r'Unregistered future call: \{.*\"name\":\s*\"TestCall0\".*\}\n'
+                  r'Unregistered future call: \{.*\"name\":\s*\"TestCall1\".*\}\n.*',
+                ),
+              );
+            },
+          );
 
-        test(
-          'then broken future calls are logged',
-          () async {
-            await server.internalLoggingSession.close();
-            final logs = await LoggingUtil.findAllLogs(session);
-            final logEntry = logs.last.logs.first;
+          test(
+            'then broken future calls are logged',
+            () async {
+              await server.internalLoggingSession.close();
+              final logs = await LoggingUtil.findAllLogs(session);
+              final logEntry = logs.last.logs.first;
 
-            expect(logEntry.logLevel, LogLevel.warning);
-            expect(
-              logEntry.message,
-              matches(
-                r'.*Future call failed deserialization. Error: .* Entry: \{.*\"name\":\s*\"TestCall2\".*\}\n'
-                r'Future call failed deserialization. Error: .* Entry: \{.*\"name\":\s*\"TestCall3\".*\}\n',
-              ),
-            );
-          },
-        );
-      });
+              expect(logEntry.logLevel, LogLevel.warning);
+              expect(
+                logEntry.message,
+                matches(
+                  r'.*Future call failed deserialization. Error: .* Entry: \{.*\"name\":\s*\"TestCall2\".*\}\n'
+                  r'Future call failed deserialization. Error: .* Entry: \{.*\"name\":\s*\"TestCall3\".*\}\n',
+                ),
+              );
+            },
+          );
+        },
+      );
     },
   );
 
   group(
-    'Given a Serverpod server instance with checkBrokenCalls disabled'
+    'Given a Serverpod server instance with checkBrokenCalls disabled '
     'in future call config and database contains unregistered and broken future calls',
+    tags: [TestTags.concurrencyOneTestTag],
     () {
       late Serverpod server;
       late Session session;
@@ -372,7 +387,8 @@ void main() {
       });
 
       test(
-        'when starting Serverpod, then unregistered and broken future calls are not logged',
+        'when starting Serverpod, '
+        'then unregistered and broken future calls are not logged',
         () async {
           await server.start();
           await server.internalLoggingSession.close();
@@ -391,8 +407,9 @@ void main() {
   );
 
   group(
-    'Given a Serverpod server instance with deleteBrokenCalls disabled'
+    'Given a Serverpod server instance with deleteBrokenCalls disabled '
     'in future call config and database contains unregistered and broken future calls',
+    tags: [TestTags.concurrencyOneTestTag],
     () {
       late Serverpod server;
       late Session session;
@@ -432,7 +449,8 @@ void main() {
       });
 
       test(
-        'when starting Serverpod, then unregistered and broken future calls are not deleted from the database',
+        'when starting Serverpod, '
+        'then unregistered and broken future calls are not deleted from the database',
         () async {
           await server.start();
           final entries = await FutureCallEntry.db.find(session);
@@ -443,8 +461,9 @@ void main() {
   );
 
   group(
-    'Given a Serverpod server instance with deleteBrokenCalls enabled'
+    'Given a Serverpod server instance with deleteBrokenCalls enabled '
     'in future call config and database contains unregistered future calls',
+    tags: [TestTags.concurrencyOneTestTag],
     () {
       late Serverpod server;
       late Session session;
@@ -484,7 +503,8 @@ void main() {
       });
 
       test(
-        'when starting Serverpod, then unregistered future calls are deleted from the database',
+        'when starting Serverpod, '
+        'then unregistered future calls are deleted from the database',
         () async {
           var entries = await FutureCallEntry.db.find(session);
           var entryNames = entries.map((e) => e.name).toList();
@@ -506,8 +526,9 @@ void main() {
   );
 
   group(
-    'Given a Serverpod server instance with deleteBrokenCalls enabled'
+    'Given a Serverpod server instance with deleteBrokenCalls enabled '
     'in future call config and broken future calls',
+    tags: [TestTags.concurrencyOneTestTag],
     () {
       late Serverpod server;
       late Session session;
@@ -547,7 +568,8 @@ void main() {
       });
 
       test(
-        'when starting Serverpod, then broken future calls are deleted from the database',
+        'when starting Serverpod, '
+        'then broken future calls are deleted from the database',
         () async {
           var entries = await FutureCallEntry.db.find(session);
           var entryNames = entries.map((e) => e.name).toList();
