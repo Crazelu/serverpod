@@ -1,31 +1,36 @@
-// https://github.com/agilord/cron/blob/master/lib/cron.dart Licensed under BSD 3-Clause License.
-
-// Copyright (c) 2016, Agilord.
-// All rights reserved.
-
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are met:
-//     * Redistributions of source code must retain the above copyright
-//       notice, this list of conditions and the following disclaimer.
-//     * Redistributions in binary form must reproduce the above copyright
-//       notice, this list of conditions and the following disclaimer in the
-//       documentation and/or other materials provided with the distribution.
-//     * Neither the name of the <organization> nor the
-//       names of its contributors may be used to endorse or promote products
-//       derived from this software without specific prior written permission.
-
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-// DISCLAIMED. IN NO EVENT SHALL <COPYRIGHT HOLDER> BE LIABLE FOR ANY
-// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-// (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-// LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
-// ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-import 'package:meta/meta.dart';
+/*
+ * This file is cloned from the original cron library and licensed under the BSD
+ * 3-Clause License. Source: https://github.com/agilord/cron
+ *
+ * The scope of the below license ("Software") is limited to this file
+ * which is a derivative work of the original library. The license does
+ * not apply to any other part of the codebase.
+ * 
+ * Copyright (c) 2016, Agilord.
+ * All rights reserved.
+ * 
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *     * Redistributions of source code must retain the above copyright
+ *       notice, this list of conditions and the following disclaimer.
+ *     * Redistributions in binary form must reproduce the above copyright
+ *       notice, this list of conditions and the following disclaimer in the
+ *       documentation and/or other materials provided with the distribution.
+ *     * Neither the name of the <organization> nor the
+ *       names of its contributors may be used to endorse or promote products
+ *       derived from this software without specific prior written permission.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL <COPYRIGHT HOLDER> BE LIABLE FOR ANY
+ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
 
 /// Represents a cron schedule.
 class Cron {
@@ -64,7 +69,9 @@ class Cron {
         .toList();
 
     if (fields.length < 5 || fields.length > 6) {
-      throw CronFormatException('Invalid cron expression: $cronExpression');
+      throw CronFormatException(
+        'Invalid cron expression: $cronExpression. Only 5-field and 6-field formats are supported.',
+      );
     }
 
     fields = [
@@ -79,26 +86,12 @@ class Cron {
     final months = fields[4];
     final weekdays = fields[5];
 
-    final parsedSeconds = parseField(
-      seconds,
-    )?.where((x) => x >= 0 && x <= 59).toList();
-    final parsedMinutes = parseField(
-      minutes,
-    )?.where((x) => x >= 0 && x <= 59).toList();
-    final parsedHours = parseField(
-      hours,
-    )?.where((x) => x >= 0 && x <= 23).toList();
-    final parsedDays = parseField(
-      days,
-    )?.where((x) => x >= 1 && x <= 31).toList();
-    final parsedMonths = parseField(
-      months,
-    )?.where((x) => x >= 1 && x <= 12).toList();
-    final parsedWeekdays = parseField(weekdays)
-        ?.where((x) => x >= 0 && x <= 7)
-        .map((x) => x == 0 ? 7 : x)
-        .toSet()
-        .toList();
+    final parsedSeconds = _parseFieldWithConstraint(seconds, 0, 59);
+    final parsedMinutes = _parseFieldWithConstraint(minutes, 0, 59);
+    final parsedHours = _parseFieldWithConstraint(hours, 0, 23);
+    final parsedDays = _parseFieldWithConstraint(days, 1, 31);
+    final parsedMonths = _parseFieldWithConstraint(months, 1, 12);
+    final parsedWeekdays = _parseWeekdayField(weekdays);
 
     return Cron._(
       parsedSeconds,
@@ -168,9 +161,19 @@ class Cron {
   }
 }
 
-@visibleForTesting
+/// Parses a weekday field, converting 0 to 7 to represent Sunday.
+List<int>? _parseWeekdayField(String? field) {
+  final parsed = _parseFieldWithConstraint(field, 0, 7);
+  return parsed?.map((x) => x == 0 ? 7 : x).toSet().toList();
+}
+
+/// Parses a cron field with minimum and maximum constraints.
+List<int>? _parseFieldWithConstraint(String? field, int min, int max) {
+  return _parseField(field)?.where((x) => x >= min && x <= max).toList();
+}
+
 /// Parses a cron field and returns a list of allowed values.
-List<int>? parseField(dynamic constraint) {
+List<int>? _parseField(dynamic constraint) {
   if (constraint == null) return null;
   if (constraint is int) return [constraint];
   if (constraint is List<int>) return constraint;
@@ -179,63 +182,77 @@ List<int>? parseField(dynamic constraint) {
     if (constraint == '') return null;
     final parts = constraint.split(',');
     if (parts.length > 1) {
-      final items = parts
-          .map(parseField)
-          .expand((list) => list!)
-          .toSet()
-          .toList();
-      items.sort();
-      return items;
+      return _parseFieldValues(parts);
     }
 
     final singleValue = int.tryParse(constraint);
     if (singleValue != null) return [singleValue];
 
-    var intervalPart = '';
-    if (constraint.contains('/')) {
-      final parts = constraint.split('/');
-      if (parts.length > 2) {
-        throw CronFormatException(
-          'Invalid cron expression. More than one `/` for intervals.',
-        );
-      }
-      // ignore: parameter_assignments
-      constraint = parts[0].trim();
-      intervalPart = parts[1].trim();
-    }
-
-    final interval = intervalPart.isEmpty ? 1 : int.tryParse(intervalPart);
-    if (interval == null) {
-      throw CronFormatException(
-        'Invalid cron expression. Invalid interval value: $intervalPart',
-      );
-    }
-    if (interval < 1) {
-      throw CronFormatException(
-        'Invalid cron expression. Invalid interval value: $interval',
-      );
-    }
-
-    if (constraint == '*') {
-      return List.generate(120 ~/ interval, (i) => i * interval);
-    } else if (constraint.contains('-')) {
-      final ranges = constraint.split('-');
-      if (ranges.length == 2) {
-        final lower = int.tryParse(ranges.first) ?? -1;
-        final higher = int.tryParse(ranges.last) ?? -1;
-        if (lower <= higher) {
-          return List.generate(
-            (higher - lower + 1) ~/ interval,
-            (i) => i * interval + lower,
-          );
-        }
-      }
-    }
+    return _parseIntervalField(constraint);
   }
 
   throw CronFormatException(
     'Invalid cron expression. Unable to parse: $constraint',
   );
+}
+
+/// Parses [parts] which are comma-separated values in a cron field.
+List<int> _parseFieldValues(List<String> parts) {
+  final items = parts.map(_parseField).expand((list) => list!).toSet().toList();
+  items.sort();
+  return items;
+}
+
+/// Parses a cron field that may contain an interval (e.g., "*/5" or "1-10/2").
+List<int>? _parseIntervalField(String field) {
+  var intervalPart = '';
+  if (field.contains('/')) {
+    final parts = field.split('/');
+    if (parts.length > 2) {
+      throw CronFormatException(
+        'Invalid cron expression. More than one `/` for intervals: $field',
+      );
+    }
+
+    field = parts[0].trim();
+    intervalPart = parts[1].trim();
+  }
+
+  final interval = intervalPart.isEmpty ? 1 : int.tryParse(intervalPart);
+  if (interval == null) {
+    throw CronFormatException(
+      'Invalid cron expression. Invalid interval value: $intervalPart',
+    );
+  }
+  if (interval < 1) {
+    throw CronFormatException(
+      'Invalid cron expression. Invalid interval value: $intervalPart',
+    );
+  }
+
+  if (field == '*') {
+    return List.generate(120 ~/ interval, (i) => i * interval);
+  } else if (field.contains('-')) {
+    return _parseIntervalRange(field, interval);
+  }
+
+  return null;
+}
+
+/// Parses a cron field that contains a range with an interval (e.g., "1-10/2").
+List<int>? _parseIntervalRange(String field, int interval) {
+  final ranges = field.split('-');
+  if (ranges.length == 2) {
+    final lower = int.tryParse(ranges.first) ?? -1;
+    final higher = int.tryParse(ranges.last) ?? -1;
+    if (lower <= higher) {
+      return List.generate(
+        (higher - lower + 1) ~/ interval,
+        (i) => i * interval + lower,
+      );
+    }
+  }
+  return null;
 }
 
 /// Exception thrown when a cron data does not have an expected
