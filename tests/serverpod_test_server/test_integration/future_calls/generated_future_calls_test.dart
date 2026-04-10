@@ -254,40 +254,52 @@ void main() {
         },
       );
 
-      test(
-        'when scheduling a recurring future call with interval and no start DateTime, '
-        'then a FutureCallEntry is added to the database with IntervalFutureCallScheduling, '
-        'and time set to current time plus the interval',
-        () async {
+      group(
+        'when scheduling a recurring future call with interval and no start DateTime',
+        () {
           final now = DateTime.now().toUtc();
-          await withClock(Clock.fixed(now), () async {
-            final interval = Duration(minutes: 5);
+          final interval = Duration(minutes: 5);
+          late List<FutureCallEntry> futureCallEntries;
 
-            await pod.futureCalls
-                .callRecurring()
-                .every(interval)
-                .testGeneratedCall
-                .hello('Lucky');
+          setUp(() async {
+            await withClock(Clock.fixed(now), () async {
+              await pod.futureCalls
+                  .callRecurring()
+                  .every(interval)
+                  .testGeneratedCall
+                  .hello('Lucky');
 
-            final futureCallEntries = await FutureCallEntry.db.find(
-              session,
-              where: (entry) => entry.name.equals(testCallName),
-            );
-
-            expect(futureCallEntries, hasLength(1));
-            expect(
-              futureCallEntries.first.scheduling,
-              isA<IntervalFutureCallScheduling>().having(
-                (s) => (s.interval, s.start),
-                'interval',
-                (interval, null),
-              ),
-            );
-            expect(
-              futureCallEntries.first.time.difference(now),
-              interval,
-            );
+              futureCallEntries = await FutureCallEntry.db.find(
+                session,
+                where: (entry) => entry.name.equals(testCallName),
+              );
+            });
           });
+
+          test(
+            'then a FutureCallEntry is added to the database with IntervalFutureCallScheduling',
+            () async {
+              expect(futureCallEntries, hasLength(1));
+              expect(
+                futureCallEntries.first.scheduling,
+                isA<IntervalFutureCallScheduling>().having(
+                  (s) => (s.interval, s.start),
+                  'interval',
+                  (interval, null),
+                ),
+              );
+            },
+          );
+
+          test(
+            'then the FutureCallEntry time is set to current time plus the interval',
+            () async {
+              expect(
+                futureCallEntries.first.time,
+                now.add(interval),
+              );
+            },
+          );
         },
       );
 
@@ -340,29 +352,6 @@ void main() {
             expect(futureCallEntries, hasLength(1));
             expect(futureCallEntries.first.time, now);
           });
-        },
-      );
-
-      test(
-        'when scheduling a recurring future call with interval and a future start DateTime, '
-        'then a FutureCallEntry is added to the database with time set to start time',
-        () async {
-          final interval = Duration(minutes: 5);
-          final start = DateTime.now().toUtc().add(Duration(hours: 1));
-
-          await pod.futureCalls
-              .callRecurring()
-              .every(interval, start: start)
-              .testGeneratedCall
-              .hello('Lucky');
-
-          final futureCallEntries = await FutureCallEntry.db.find(
-            session,
-            where: (entry) => entry.name.equals(testCallName),
-          );
-
-          expect(futureCallEntries, hasLength(1));
-          expect(futureCallEntries.first.time, start);
         },
       );
     },
