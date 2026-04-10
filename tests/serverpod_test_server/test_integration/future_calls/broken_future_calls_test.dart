@@ -115,6 +115,7 @@ void main() {
 
       group(
         'when starting Serverpod',
+        tags: [TestTags.concurrencyOneTestTag],
         () {
           setUp(() async {
             await server.start();
@@ -206,6 +207,7 @@ void main() {
 
       group(
         'when starting Serverpod',
+        tags: [TestTags.concurrencyOneTestTag],
         () {
           setUp(() async {
             await server.start();
@@ -299,6 +301,7 @@ void main() {
 
       group(
         'when starting Serverpod',
+        tags: [TestTags.concurrencyOneTestTag],
         () {
           setUp(() async {
             await server.start();
