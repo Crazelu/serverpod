@@ -292,7 +292,7 @@ void main() {
                           r'    Duration interval, \{\n'
                           r'    DateTime\? start,\n'
                           r'  \}\) \{\n'
-                          r'    final now = DateTime.now\(\).toUtc\(\);\n'
+                          r'    final now = _i\d.clock.now\(\).toUtc\(\);\n'
                           r'    DateTime effectiveStart = now.add\(interval\);\n'
                           r'\n'
                           r'    if \(start != null\) \{\n'
