@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:clock/clock.dart';
 import 'package:meta/meta.dart';
 import 'package:serverpod/protocol.dart';
 import 'package:serverpod/serverpod.dart';
@@ -348,7 +349,7 @@ class FutureCallManager {
     // claim will run the call and clean up after running.
     if (heartbeatTimer == null) return;
 
-    DateTime? nextRunTime = _getNextRecurringRunTime(futureCallEntry);
+    await _scheduleNextRecurringCallIfNeeded(futureCallEntry);
 
     final futureCallSession = _sessionBuilder(futureCallEntry.name);
 
@@ -377,9 +378,6 @@ class FutureCallManager {
         _internalSession,
         where: (t) => t.id.equals(futureCallEntry.id),
       );
-
-      // Handle recurring future calls
-      await _scheduleNextRecurringCall(futureCallEntry, nextRunTime);
     }
   }
 
@@ -390,42 +388,33 @@ class FutureCallManager {
     var scheduling = futureCallEntry.scheduling;
     if (scheduling == null) return null;
 
-    return switch (scheduling) {
-      CronFutureCallScheduling(cron: var cron) => Cron.parse(cron).nextTime(),
-      IntervalFutureCallScheduling(interval: var interval, start: var start) =>
-        () {
-          final now = DateTime.now().toUtc();
-          if (start != null && start.isBefore(now)) {
-            final difference = now.difference(start);
-            final count = (difference.inMilliseconds / interval.inMilliseconds)
-                .ceil();
-            return now.add(interval * count);
-          }
-          return now.add(interval);
-        }(),
-    };
+    switch (scheduling) {
+      case CronFutureCallScheduling(cron: var cron):
+        return Cron.parse(cron).nextTime();
+      case IntervalFutureCallScheduling(
+        interval: var interval,
+        start: var start,
+      ):
+        final now = clock.now().toUtc();
+        final startTime = start ?? futureCallEntry.time;
+        final difference = now.difference(startTime);
+        final count = (difference.inMilliseconds / interval.inMilliseconds)
+            .ceil();
+        return startTime.add(interval * count);
+    }
   }
 
-  /// Schedules [futureCallEntry] for its next recurring run at [nextRunTime].
-  /// This method does nothing if [futureCallEntry] is not recurring or [nextRunTime] is null.
-  Future<void> _scheduleNextRecurringCall(
+  /// Schedules [futureCallEntry] for its next recurring run.
+  /// This method does nothing if [futureCallEntry] is not recurring.
+  Future<void> _scheduleNextRecurringCallIfNeeded(
     FutureCallEntry futureCallEntry,
-    DateTime? nextRunTime,
   ) async {
-    var scheduling = futureCallEntry.scheduling;
-    if (scheduling == null || nextRunTime == null) return;
-
-    if (scheduling is IntervalFutureCallScheduling) {
-      scheduling = scheduling.copyWith(start: null);
-    }
+    final nextRunTime = _getNextRecurringRunTime(futureCallEntry);
+    if (futureCallEntry.scheduling == null || nextRunTime == null) return;
 
     await FutureCallEntry.db.insertRow(
       _internalSession,
-      futureCallEntry.copyWith(
-        id: null,
-        time: nextRunTime,
-        scheduling: scheduling,
-      ),
+      futureCallEntry.copyWith(id: null, time: nextRunTime),
     );
   }
 
