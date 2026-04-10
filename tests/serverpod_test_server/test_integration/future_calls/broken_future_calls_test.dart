@@ -21,7 +21,7 @@ void main() {
   group(
     'Given a Serverpod server instance with default config '
     'and valid registered future calls in the database',
-    tags: [TestTags.concurrencyOneTestTag],
+    tags: TestTags.concurrencyOneTestTags,
     () {
       late Serverpod server;
       late Session session;
@@ -78,7 +78,7 @@ void main() {
   group(
     'Given a Serverpod server instance with default config and at least 1000 '
     'future calls in the database containing unregistered and broken future calls',
-    tags: [TestTags.concurrencyOneTestTag],
+    tags: TestTags.concurrencyOneTestTags,
     () {
       late Serverpod server;
       late Session session;
@@ -115,7 +115,7 @@ void main() {
 
       group(
         'when starting Serverpod',
-        tags: [TestTags.concurrencyOneTestTag],
+        tags: TestTags.concurrencyOneTestTags,
         () {
           setUp(() async {
             await server.start();
@@ -170,7 +170,7 @@ void main() {
   group(
     'Given a Serverpod server instance with default config and less than 1000 '
     'future calls in the database containing unregistered and broken future calls',
-    tags: [TestTags.concurrencyOneTestTag],
+    tags: TestTags.concurrencyOneTestTags,
     () {
       late Serverpod server;
       late Session session;
@@ -207,7 +207,7 @@ void main() {
 
       group(
         'when starting Serverpod',
-        tags: [TestTags.concurrencyOneTestTag],
+        tags: TestTags.concurrencyOneTestTags,
         () {
           setUp(() async {
             await server.start();
@@ -260,7 +260,7 @@ void main() {
   group(
     'Given a Serverpod server instance with checkBrokenCalls enabled '
     'in future call config and database contains unregistered broken future calls',
-    tags: [TestTags.concurrencyOneTestTag],
+    tags: TestTags.concurrencyOneTestTags,
     () {
       late Serverpod server;
       late Session session;
@@ -301,7 +301,7 @@ void main() {
 
       group(
         'when starting Serverpod',
-        tags: [TestTags.concurrencyOneTestTag],
+        tags: TestTags.concurrencyOneTestTags,
         () {
           setUp(() async {
             await server.start();
@@ -350,7 +350,7 @@ void main() {
   group(
     'Given a Serverpod server instance with checkBrokenCalls disabled '
     'in future call config and database contains unregistered and broken future calls',
-    tags: [TestTags.concurrencyOneTestTag],
+    tags: TestTags.concurrencyOneTestTags,
     () {
       late Serverpod server;
       late Session session;
@@ -412,7 +412,7 @@ void main() {
   group(
     'Given a Serverpod server instance with deleteBrokenCalls disabled '
     'in future call config and database contains unregistered and broken future calls',
-    tags: [TestTags.concurrencyOneTestTag],
+    tags: TestTags.concurrencyOneTestTags,
     () {
       late Serverpod server;
       late Session session;
@@ -466,7 +466,7 @@ void main() {
   group(
     'Given a Serverpod server instance with deleteBrokenCalls enabled '
     'in future call config and database contains unregistered future calls',
-    tags: [TestTags.concurrencyOneTestTag],
+    tags: TestTags.concurrencyOneTestTags,
     () {
       late Serverpod server;
       late Session session;
@@ -531,7 +531,7 @@ void main() {
   group(
     'Given a Serverpod server instance with deleteBrokenCalls enabled '
     'in future call config and broken future calls',
-    tags: [TestTags.concurrencyOneTestTag],
+    tags: TestTags.concurrencyOneTestTags,
     () {
       late Serverpod server;
       late Session session;
