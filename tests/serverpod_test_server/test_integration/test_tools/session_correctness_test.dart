@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:serverpod/serverpod.dart';
 import 'package:serverpod_test_server/src/endpoints/test_tools.dart';
 import 'package:serverpod_test_server/test_util/logging_utils.dart';
+import 'package:serverpod_test_server/test_util/test_tags.dart';
 import 'package:test/test.dart';
 
 import 'serverpod_test_tools.dart';
@@ -39,39 +40,27 @@ void main() {
         },
       );
 
-      group(
-        'when method logs to session',
-        () {
-          late Session querySession;
+      test(
+        'when method logs to session then the log can be observed persistently',
+        tags: TestTags.concurrencyOneTestTags,
+        () async {
+          final querySession = sessionBuilder.build();
+          await LoggingUtil.clearAllLogs(querySession);
 
-          setUp(() async {
-            querySession = sessionBuilder.build();
-            await LoggingUtil.clearAllLogs(querySession);
+          await endpoints.testTools.logMessageWithSession(
+            sessionBuilder.copyWith(
+              enableLogging: true,
+            ),
+          );
 
-            await endpoints.testTools.logMessageWithSession(
-              sessionBuilder.copyWith(
-                enableLogging: true,
-              ),
-            );
-          });
+          final logs = await LoggingUtil.findAllLogs(querySession);
+          final messages = logs
+              .expand((info) => info.logs)
+              .map((l) => l.message);
 
-          tearDown(() async {
-            await querySession.close();
-          });
-
-          test(
-            'then the log can be observed persistently',
-            () async {
-              final logs = await LoggingUtil.findAllLogs(querySession);
-              final messages = logs
-                  .expand((info) => info.logs)
-                  .map((l) => l.message);
-
-              expect(
-                messages,
-                anyElement(contains('test session log in endpoint')),
-              );
-            },
+          expect(
+            messages,
+            anyElement(contains('test session log in endpoint')),
           );
         },
       );
