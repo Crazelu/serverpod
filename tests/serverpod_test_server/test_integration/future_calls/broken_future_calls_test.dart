@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:serverpod/protocol.dart' show FutureCallEntry;
 import 'package:serverpod/serverpod.dart';
+import 'package:serverpod_test/serverpod_test.dart';
 import 'package:serverpod_test_server/src/generated/simple_data.dart';
 import 'package:serverpod_test_server/test_util/logging_utils.dart';
 import 'package:serverpod_test_server/test_util/test_serverpod.dart';
@@ -20,6 +21,7 @@ void main() {
   group(
     'Given a Serverpod server instance with default config '
     'and valid registered future calls in the database',
+    tags: [defaultIntegrationTestTag],
     () {
       late Serverpod server;
       late Session session;
@@ -79,6 +81,7 @@ void main() {
   group(
     'Given a Serverpod server instance with default config and at least 1000 '
     'future calls in the database containing unregistered and broken future calls',
+    tags: [defaultIntegrationTestTag],
     () {
       late Serverpod server;
       late Session session;
@@ -176,6 +179,7 @@ void main() {
   group(
     'Given a Serverpod server instance with default config and less than 1000 '
     'future calls in the database containing unregistered and broken future calls',
+    tags: [defaultIntegrationTestTag],
     () {
       late Serverpod server;
       late Session session;
@@ -272,6 +276,7 @@ void main() {
   group(
     'Given a Serverpod server instance with checkBrokenCalls enabled '
     'in future call config and database contains unregistered broken future calls',
+    tags: [defaultIntegrationTestTag],
     () {
       late Serverpod server;
       late Session session;
@@ -366,6 +371,7 @@ void main() {
   group(
     'Given a Serverpod server instance with checkBrokenCalls disabled '
     'in future call config and database contains unregistered and broken future calls',
+    tags: [defaultIntegrationTestTag],
     () {
       late Serverpod server;
       late Session session;
@@ -428,6 +434,7 @@ void main() {
   group(
     'Given a Serverpod server instance with deleteBrokenCalls disabled '
     'in future call config and database contains unregistered and broken future calls',
+    tags: [defaultIntegrationTestTag],
     () {
       late Serverpod server;
       late Session session;
@@ -481,6 +488,7 @@ void main() {
   group(
     'Given a Serverpod server instance with deleteBrokenCalls enabled '
     'in future call config and database contains unregistered future calls',
+    tags: [defaultIntegrationTestTag],
     () {
       late Serverpod server;
       late Session session;
@@ -545,6 +553,7 @@ void main() {
   group(
     'Given a Serverpod server instance with deleteBrokenCalls enabled '
     'in future call config and broken future calls',
+    tags: [defaultIntegrationTestTag],
     () {
       late Serverpod server;
       late Session session;
