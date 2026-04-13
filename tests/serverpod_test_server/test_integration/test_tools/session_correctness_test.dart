@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:serverpod/serverpod.dart';
 import 'package:serverpod_test_server/src/endpoints/test_tools.dart';
 import 'package:serverpod_test_server/test_util/logging_utils.dart';
-import 'package:serverpod_test_server/test_util/test_tags.dart';
 import 'package:test/test.dart';
 
 import 'serverpod_test_tools.dart';
@@ -42,10 +41,8 @@ void main() {
 
       test(
         'when method logs to session then the log can be observed persistently',
-        tags: TestTags.concurrencyOneTestTags,
         () async {
           final querySession = sessionBuilder.build();
-          await LoggingUtil.clearAllLogs(querySession);
 
           await endpoints.testTools.logMessageWithSession(
             sessionBuilder.copyWith(
