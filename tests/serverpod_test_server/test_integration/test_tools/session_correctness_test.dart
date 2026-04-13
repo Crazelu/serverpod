@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:serverpod/serverpod.dart';
+import 'package:serverpod/src/server/serverpod.dart';
 import 'package:serverpod_test_server/src/endpoints/test_tools.dart';
 import 'package:serverpod_test_server/test_util/logging_utils.dart';
 import 'package:serverpod_test_server/test_util/test_tags.dart';
@@ -52,6 +53,8 @@ void main() {
               enableLogging: true,
             ),
           );
+
+          await querySession.serverpod.internalSession.close();
 
           final logs = await LoggingUtil.findAllLogs(querySession);
           final messages = logs
