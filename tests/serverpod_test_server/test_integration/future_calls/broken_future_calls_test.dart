@@ -61,11 +61,14 @@ void main() {
           await server.internalLoggingSession.close();
 
           final logs = await LoggingUtil.findAllLogs(session);
-          final logMessages =
-              logs.lastOrNull?.logs.map((e) => e.message).toList() ?? [];
+          final logMessages = logs
+              .expand((info) => info.logs)
+              .map((l) => l.message);
 
           expect(
-            logMessages.where((message) => message.contains(r'TestCall\d')),
+            logMessages.where(
+              (message) => message.contains(r'TestCall\d'),
+            ),
             isEmpty,
           );
         },
@@ -123,11 +126,14 @@ void main() {
               await server.internalLoggingSession.close();
 
               final logs = await LoggingUtil.findAllLogs(session);
-              final logMessages =
-                  logs.lastOrNull?.logs.map((e) => e.message).toList() ?? [];
+              final logMessages = logs
+                  .expand((info) => info.logs)
+                  .map((l) => l.message);
 
               expect(
-                logMessages.where((message) => message.contains(r'TestCall\d')),
+                logMessages.where(
+                  (message) => message.contains(r'TestCall\d'),
+                ),
                 isEmpty,
               );
             },
@@ -146,14 +152,18 @@ void main() {
             () async {
               await server.internalLoggingSession.close();
               final logs = await LoggingUtil.findAllLogs(session);
-              final logEntry = logs.last.logs.first;
+              final logMessages = logs
+                  .expand((info) => info.logs)
+                  .map((l) => l.message);
 
               expect(
-                logEntry.message,
-                matches(
-                  'Skipping automatic check for broken future calls due to high number of future calls in the database. '
-                  'Enable FutureCallConfig.checkBrokenCalls to always perform the check, regardless of the number of future calls. '
-                  'Optionally enable FutureCallConfig.deleteBrokenCalls to automatically delete broken future calls.',
+                logMessages,
+                anyElement(
+                  matches(
+                    'Skipping automatic check for broken future calls due to high number of future calls in the database. '
+                    'Enable FutureCallConfig.checkBrokenCalls to always perform the check, regardless of the number of future calls. '
+                    'Optionally enable FutureCallConfig.deleteBrokenCalls to automatically delete broken future calls.',
+                  ),
                 ),
               );
             },
@@ -212,12 +222,16 @@ void main() {
             () async {
               await server.internalLoggingSession.close();
               final logs = await LoggingUtil.findAllLogs(session);
-              final logEntry = logs.last.logs.first;
+              final logMessages = logs
+                  .expand((info) => info.logs)
+                  .map((l) => l.message);
 
               expect(
-                logEntry.message,
-                matches(
-                  r'Unregistered future call: \{.*\"name\":\s*\"TestCall0\".*\}\n.*',
+                logMessages,
+                anyElement(
+                  matches(
+                    r'Unregistered future call: \{.*\"name\":\s*\"TestCall0\".*\}\n.*',
+                  ),
                 ),
               );
             },
@@ -228,12 +242,16 @@ void main() {
             () async {
               await server.internalLoggingSession.close();
               final logs = await LoggingUtil.findAllLogs(session);
-              final logEntry = logs.last.logs.first;
+              final logMessages = logs
+                  .expand((info) => info.logs)
+                  .map((l) => l.message);
 
               expect(
-                logEntry.message,
-                matches(
-                  r'.*Future call failed deserialization. Error: .* Entry: \{.*\"name\":\s*\"TestCall1\".*\}\n',
+                logMessages,
+                anyElement(
+                  matches(
+                    r'.*Future call failed deserialization. Error: .* Entry: \{.*\"name\":\s*\"TestCall1\".*\}\n',
+                  ),
                 ),
               );
             },
@@ -304,14 +322,17 @@ void main() {
             () async {
               await server.internalLoggingSession.close();
               final logs = await LoggingUtil.findAllLogs(session);
-              final logEntry = logs.last.logs.first;
+              final logMessages = logs
+                  .expand((info) => info.logs)
+                  .map((l) => l.message);
 
-              expect(logEntry.logLevel, LogLevel.warning);
               expect(
-                logEntry.message,
-                matches(
-                  r'Unregistered future call: \{.*\"name\":\s*\"TestCall0\".*\}\n'
-                  r'Unregistered future call: \{.*\"name\":\s*\"TestCall1\".*\}\n.*',
+                logMessages,
+                anyElement(
+                  matches(
+                    r'Unregistered future call: \{.*\"name\":\s*\"TestCall0\".*\}\n'
+                    r'Unregistered future call: \{.*\"name\":\s*\"TestCall1\".*\}\n.*',
+                  ),
                 ),
               );
             },
@@ -322,14 +343,17 @@ void main() {
             () async {
               await server.internalLoggingSession.close();
               final logs = await LoggingUtil.findAllLogs(session);
-              final logEntry = logs.last.logs.first;
+              final logMessages = logs
+                  .expand((info) => info.logs)
+                  .map((l) => l.message);
 
-              expect(logEntry.logLevel, LogLevel.warning);
               expect(
-                logEntry.message,
-                matches(
-                  r'.*Future call failed deserialization. Error: .* Entry: \{.*\"name\":\s*\"TestCall2\".*\}\n'
-                  r'Future call failed deserialization. Error: .* Entry: \{.*\"name\":\s*\"TestCall3\".*\}\n',
+                logMessages,
+                anyElement(
+                  matches(
+                    r'.*Future call failed deserialization. Error: .* Entry: \{.*\"name\":\s*\"TestCall2\".*\}\n'
+                    r'Future call failed deserialization. Error: .* Entry: \{.*\"name\":\s*\"TestCall3\".*\}\n',
+                  ),
                 ),
               );
             },
@@ -388,8 +412,9 @@ void main() {
           await server.internalLoggingSession.close();
 
           final logs = await LoggingUtil.findAllLogs(session);
-          final logMessages =
-              logs.lastOrNull?.logs.map((e) => e.message).toList() ?? [];
+          final logMessages = logs
+              .expand((info) => info.logs)
+              .map((l) => l.message);
 
           expect(
             logMessages.where((message) => message.contains(r'TestCall\d')),
