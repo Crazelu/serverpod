@@ -441,7 +441,6 @@ void main() {
           ),
         );
         session = await server.createSession(enableLogging: false);
-        await LoggingUtil.clearAllLogs(session);
 
         for (int i = 0; i < futureCallsCount; i++) {
           final name = 'TestCall$i';
@@ -494,7 +493,6 @@ void main() {
           ),
         );
         session = await server.createSession(enableLogging: false);
-        await LoggingUtil.clearAllLogs(session);
 
         for (int i = 0; i < futureCallsCount; i++) {
           final name = 'TestCall$i';
@@ -558,7 +556,6 @@ void main() {
           ),
         );
         session = await server.createSession(enableLogging: false);
-        await LoggingUtil.clearAllLogs(session);
 
         for (int i = 0; i < futureCallsCount; i++) {
           final name = 'TestCall$i';
