@@ -4,6 +4,7 @@ import 'package:test/test.dart';
 void main() {
   test(
     'Given a cron expression with less than 5 fields, '
+    'when parsing, '
     'then a CronFormatException is thrown',
     () {
       expect(
