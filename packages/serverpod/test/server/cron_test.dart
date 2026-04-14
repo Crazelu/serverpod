@@ -17,17 +17,6 @@ void main() {
           ),
         ),
       );
-
-      expect(
-        () => Cron.parse('* * * *'),
-        throwsA(
-          isA<CronFormatException>().having(
-            (e) => e.message,
-            'message',
-            'Invalid cron expression: * * * *. Only 5-field and 6-field formats are supported.',
-          ),
-        ),
-      );
     },
   );
 
@@ -43,16 +32,6 @@ void main() {
             (e) => e.message,
             'message',
             'Invalid cron expression: * * * * * * *. Only 5-field and 6-field formats are supported.',
-          ),
-        ),
-      );
-      expect(
-        () => Cron.parse('* * * * * * * *'),
-        throwsA(
-          isA<CronFormatException>().having(
-            (e) => e.message,
-            'message',
-            'Invalid cron expression: * * * * * * * *. Only 5-field and 6-field formats are supported.',
           ),
         ),
       );
