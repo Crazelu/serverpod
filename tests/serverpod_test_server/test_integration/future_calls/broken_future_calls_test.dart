@@ -57,10 +57,9 @@ void main() {
       test(
         'when starting Serverpod, then no errors are logged',
         () async {
-          print('BROKEN SERVER DEFAULT CONFIG BEFORE START: ${server.config}');
           await server.start();
           await server.internalLoggingSession.close();
-          print('BROKEN SERVER DEFAULT CONFIG AFTER LOGGING: ${server.config}');
+
           final logs = await LoggingUtil.findAllLogs(session);
           final logMessages = logs
               .expand((info) => info.logs)
@@ -152,7 +151,6 @@ void main() {
             'then a warning is logged about skipping the check for broken future calls',
             () async {
               await server.internalLoggingSession.close();
-              await Future.delayed(Duration(milliseconds: 500));
               final logs = await LoggingUtil.findAllLogs(session);
               final logMessages = logs
                   .expand((info) => info.logs)
@@ -223,7 +221,6 @@ void main() {
             'then unregistered future calls are logged',
             () async {
               await server.internalLoggingSession.close();
-              await Future.delayed(Duration(milliseconds: 500));
               final logs = await LoggingUtil.findAllLogs(session);
               final logMessages = logs
                   .expand((info) => info.logs)
@@ -244,7 +241,6 @@ void main() {
             'then broken future calls are logged',
             () async {
               await server.internalLoggingSession.close();
-              await Future.delayed(Duration(milliseconds: 500));
               final logs = await LoggingUtil.findAllLogs(session);
               final logMessages = logs
                   .expand((info) => info.logs)
@@ -318,9 +314,6 @@ void main() {
         'when starting Serverpod',
         () {
           setUp(() async {
-            print(
-              'BROKEN SERVER NON-DEFAULT CONFIG BEFORE START: ${server.config}',
-            );
             await server.start();
           });
 
@@ -328,10 +321,6 @@ void main() {
             'then unregistered future calls are logged',
             () async {
               await server.internalLoggingSession.close();
-              await Future.delayed(Duration(milliseconds: 500));
-              print(
-                'BROKEN SERVER NON-DEFAULT CONFIG AFTER LOGGING: ${server.config}',
-              );
               final logs = await LoggingUtil.findAllLogs(session);
               final logMessages = logs
                   .expand((info) => info.logs)
@@ -353,7 +342,6 @@ void main() {
             'then broken future calls are logged',
             () async {
               await server.internalLoggingSession.close();
-              await Future.delayed(Duration(milliseconds: 500));
               final logs = await LoggingUtil.findAllLogs(session);
               final logMessages = logs
                   .expand((info) => info.logs)
@@ -422,7 +410,6 @@ void main() {
         () async {
           await server.start();
           await server.internalLoggingSession.close();
-          await Future.delayed(Duration(milliseconds: 500));
 
           final logs = await LoggingUtil.findAllLogs(session);
           final logMessages = logs
