@@ -15,7 +15,7 @@ class LoggingUtil {
   ) async {
     var rows = (await SessionLogEntry.db.find(
       session,
-      orderBy: (t) => t.id.desc(),
+      orderBy: (t) => t.id,
     ));
 
     var sessionLogInfo = <SessionLogInfo>[];
