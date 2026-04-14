@@ -285,13 +285,6 @@ void main() async {
             isTrue,
           );
         });
-
-        test('then the new entry scheduling has start set to null', () {
-          final scheduling =
-              futureCallEntries.first.scheduling
-                  as IntervalFutureCallScheduling;
-          expect(scheduling.start, isNull);
-        });
       });
 
       group(

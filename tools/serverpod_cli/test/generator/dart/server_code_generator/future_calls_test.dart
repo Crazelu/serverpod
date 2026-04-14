@@ -293,14 +293,7 @@ void main() {
                           r'    DateTime\? start,\n'
                           r'  \}\) \{\n'
                           r'    final now = _i\d.clock.now\(\).toUtc\(\);\n'
-                          r'    DateTime effectiveStart = now.add\(interval\);\n'
-                          r'\n'
-                          r'    if \(start != null\) \{\n'
-                          r'      if \(start.isBefore\(now\)\)\n'
-                          r'        effectiveStart = now;\n'
-                          r'      else\n'
-                          r'        effectiveStart = start.toUtc\(\);\n'
-                          r'    \}\n',
+                          r'    DateTime effectiveStart = start \?\? now.add\(interval\);\n',
                         ),
                       );
                     },

@@ -399,15 +399,7 @@ extension FutureCallsLibraryGenerator on LibraryGenerator {
 
                   return '''
                     final now = $clock.now().toUtc();
-                    DateTime effectiveStart = now.add(interval);
-
-                    if (start != null) {
-                      if (start.isBefore(now))
-                        effectiveStart = now;
-                      else
-                        effectiveStart = start.toUtc();
-                    }
-
+                    DateTime effectiveStart = start ?? now.add(interval);
                     return _FutureCallRef(
                       (name, object) {
                         return _futureCallManager.scheduleFutureCall(
