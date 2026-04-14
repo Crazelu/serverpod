@@ -39,29 +39,29 @@ void main() {
         },
       );
 
-      // test(
-      //   'when method logs to session then the log can be observed persistently',
-      //   () async {
-      //     final querySession = sessionBuilder.build();
-      //     await LoggingUtil.clearAllLogs(querySession);
+      test(
+        'when method logs to session then the log can be observed persistently',
+        () async {
+          final querySession = sessionBuilder.build();
+          await LoggingUtil.clearAllLogs(querySession);
 
-      //     await endpoints.testTools.logMessageWithSession(
-      //       sessionBuilder.copyWith(
-      //         enableLogging: true,
-      //       ),
-      //     );
+          await endpoints.testTools.logMessageWithSession(
+            sessionBuilder.copyWith(
+              enableLogging: true,
+            ),
+          );
 
-      //     final logs = await LoggingUtil.findAllLogs(querySession);
-      //     final messages = logs
-      //         .expand((info) => info.logs)
-      //         .map((l) => l.message);
+          final logs = await LoggingUtil.findAllLogs(querySession);
+          final messages = logs
+              .expand((info) => info.logs)
+              .map((l) => l.message);
 
-      //     expect(
-      //       messages,
-      //       anyElement(contains('test session log in endpoint')),
-      //     );
-      //   },
-      // );
+          expect(
+            messages,
+            anyElement(contains('test session log in endpoint')),
+          );
+        },
+      );
 
       group('when method throws an exception', () {
         late Future future;
