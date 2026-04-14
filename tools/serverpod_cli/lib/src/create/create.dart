@@ -26,6 +26,7 @@ import 'package:serverpod_shared/serverpod_shared.dart';
 import 'package:yaml_edit/yaml_edit.dart';
 
 import 'copier.dart';
+import 'template_renderer.dart';
 
 enum ServerpodTemplateType {
   mini('mini'),
@@ -50,12 +51,17 @@ Future<bool> performCreate(
   ServerpodTemplateType template,
   bool force, {
   required bool? interactive,
+  required Map<String, Object?> templateContext,
 }) async {
   // If the name is a dot, we can either create a new project in the current
   // directory or upgrade an existing project.
   if (name == '.') {
     if (findServerDirectory(Directory.current) != null) {
-      return await _performUpgrade(template, interactive: interactive);
+      return await _performUpgrade(
+        template,
+        interactive: interactive,
+        templateContext: templateContext,
+      );
     }
 
     // If we are creating a new project in the current directory, we need to
@@ -151,8 +157,18 @@ Future<bool> performCreate(
     );
   }
 
+  if (template == ServerpodTemplateType.server) {
+    success &= await _renderTemplates(serverpodDirs.serverDir, templateContext);
+  }
+
   success &= await log.progress('Getting workspace dependencies.', () {
     return CommandLineTools.dartPubGet(serverpodDirs.projectDir);
+  });
+
+  success &= await log.progress('Formatting server file.', () {
+    return CommandLineTools.dartFormat(
+      File(p.join(serverpodDirs.serverDir.path, 'lib', 'server.dart')),
+    );
   });
 
   if (template == ServerpodTemplateType.server ||
@@ -253,6 +269,7 @@ Future<bool> performCreate(
 Future<bool> _performUpgrade(
   ServerpodTemplateType template, {
   required bool? interactive,
+  required Map<String, Object?> templateContext,
 }) async {
   if (template != ServerpodTemplateType.server) {
     log.error(
@@ -296,6 +313,8 @@ Future<bool> _performUpgrade(
     },
   );
 
+  success &= await _renderTemplates(serverpodDir.serverDir, templateContext);
+
   success &= await _runGenerate(
     serverpodDir.serverDir,
     CommandLineExperimentalFeatures.instance.features,
@@ -321,6 +340,17 @@ Future<bool> _performUpgrade(
   }
 
   return success;
+}
+
+/// Parses and renders the template files in the given directory.
+Future<bool> _renderTemplates(
+  Directory dir,
+  Map<String, Object?> context,
+) async {
+  return await log.progress('Finalizing project files', () async {
+    await TemplateRenderer(dir: dir, context: context).render();
+    return true;
+  });
 }
 
 void _logMiniStartInstructions(String relativeServerPath) {

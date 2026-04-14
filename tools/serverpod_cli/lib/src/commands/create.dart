@@ -123,11 +123,15 @@ class CreateCommand extends ServerpodCommand<CreateOption> {
       }
     }
 
+    // TODO(Lucky): Build context from interactive user options/sane defaults.
+    final templateContext = <String, Object?>{};
+
     if (!await performCreate(
       name,
       template,
       force,
       interactive: interactive,
+      templateContext: templateContext,
     )) {
       throw ExitException.error();
     }
