@@ -152,6 +152,7 @@ void main() {
             'then a warning is logged about skipping the check for broken future calls',
             () async {
               await server.internalLoggingSession.close();
+              await Future.delayed(Duration(milliseconds: 500));
               final logs = await LoggingUtil.findAllLogs(session);
               final logMessages = logs
                   .expand((info) => info.logs)
@@ -222,6 +223,7 @@ void main() {
             'then unregistered future calls are logged',
             () async {
               await server.internalLoggingSession.close();
+              await Future.delayed(Duration(milliseconds: 500));
               final logs = await LoggingUtil.findAllLogs(session);
               final logMessages = logs
                   .expand((info) => info.logs)
@@ -242,6 +244,7 @@ void main() {
             'then broken future calls are logged',
             () async {
               await server.internalLoggingSession.close();
+              await Future.delayed(Duration(milliseconds: 500));
               final logs = await LoggingUtil.findAllLogs(session);
               final logMessages = logs
                   .expand((info) => info.logs)
@@ -325,6 +328,7 @@ void main() {
             'then unregistered future calls are logged',
             () async {
               await server.internalLoggingSession.close();
+              await Future.delayed(Duration(milliseconds: 500));
               print(
                 'BROKEN SERVER NON-DEFAULT CONFIG AFTER LOGGING: ${server.config}',
               );
@@ -349,6 +353,7 @@ void main() {
             'then broken future calls are logged',
             () async {
               await server.internalLoggingSession.close();
+              await Future.delayed(Duration(milliseconds: 500));
               final logs = await LoggingUtil.findAllLogs(session);
               final logMessages = logs
                   .expand((info) => info.logs)
@@ -417,6 +422,7 @@ void main() {
         () async {
           await server.start();
           await server.internalLoggingSession.close();
+          await Future.delayed(Duration(milliseconds: 500));
 
           final logs = await LoggingUtil.findAllLogs(session);
           final logMessages = logs
