@@ -32,6 +32,8 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+import 'package:collection/collection.dart';
+
 /// Represents a cron schedule.
 class Cron {
   /// The seconds of this cron schedule.
@@ -61,8 +63,12 @@ class Cron {
     this.weekdays,
   );
 
+  static String _currentCronExpression = '';
+
   /// Parses the [cronExpression].
   factory Cron.parse(String cronExpression) {
+    _currentCronExpression = cronExpression.trim();
+
     List<String?> fields = cronExpression
         .split(RegExp(r'\s+'))
         .where((p) => p.isNotEmpty)
@@ -71,6 +77,7 @@ class Cron {
     if (fields.length < 5 || fields.length > 6) {
       throw CronFormatException(
         'Invalid cron expression: $cronExpression. Only 5-field and 6-field formats are supported.',
+        _currentCronExpression,
       );
     }
 
@@ -86,12 +93,47 @@ class Cron {
     final months = fields[4];
     final weekdays = fields[5];
 
-    final parsedSeconds = _parseFieldWithConstraint(seconds, 0, 59);
-    final parsedMinutes = _parseFieldWithConstraint(minutes, 0, 59);
-    final parsedHours = _parseFieldWithConstraint(hours, 0, 23);
-    final parsedDays = _parseFieldWithConstraint(days, 1, 31);
-    final parsedMonths = _parseFieldWithConstraint(months, 1, 12);
-    final parsedWeekdays = _parseWeekdayField(weekdays);
+    int offset = seconds == null ? 0 : 1;
+
+    final parsedSeconds = _parseField(
+      seconds,
+      offset,
+    )?.where((x) => x >= 0 && x <= 59).toList();
+
+    offset += (seconds?.length ?? 0) + 1;
+
+    final parsedMinutes = _parseField(
+      minutes,
+      offset,
+    )?.where((x) => x >= 0 && x <= 59).toList();
+
+    offset += (minutes?.length ?? 0) + 1;
+
+    final parsedHours = _parseField(
+      hours,
+      offset,
+    )?.where((x) => x >= 0 && x <= 23).toList();
+
+    offset += (hours?.length ?? 0) + 1;
+
+    final parsedDays = _parseField(
+      days,
+      offset,
+    )?.where((x) => x >= 1 && x <= 31).toList();
+
+    offset += (days?.length ?? 0) + 1;
+
+    final parsedMonths = _parseField(
+      months,
+      offset,
+    )?.where((x) => x >= 1 && x <= 12).toList();
+
+    offset += (months?.length ?? 0) + 1;
+
+    final parsedWeekdays = _parseWeekdayField(
+      weekdays,
+      offset,
+    );
 
     return Cron._(
       parsedSeconds,
@@ -100,6 +142,126 @@ class Cron {
       parsedDays,
       parsedMonths,
       parsedWeekdays,
+    );
+  }
+
+  static List<int>? _parseWeekdayField(String? field, int offset) {
+    final parsed = _parseFieldWithConstraint(field, offset, 0, 7);
+    return parsed?.map((x) => x == 0 ? 7 : x).toSet().toList();
+  }
+
+  static List<int>? _parseFieldWithConstraint(
+    String? field,
+    int offset,
+    int min,
+    int max,
+  ) {
+    return _parseField(
+      field,
+      offset,
+    )?.where((x) => x >= min && x <= max).toList();
+  }
+
+  static List<int>? _parseField(dynamic constraint, [int offset = 0]) {
+    if (constraint == null) return null;
+    if (constraint is int) return [constraint];
+    if (constraint is List<int>) return constraint;
+    if (constraint is String) {
+      if (constraint == '*') return List.generate(60, (i) => i);
+      if (constraint == '') return null;
+      final parts = constraint.split(',');
+      if (parts.length > 1) {
+        return _parseFieldValues(parts, offset);
+      }
+
+      final singleValue = int.tryParse(constraint);
+      if (singleValue != null) return [singleValue];
+
+      return _parseIntervalField(constraint, offset);
+    }
+
+    throw CronFormatException(
+      'Unable to parse field',
+      _currentCronExpression,
+      offset,
+    );
+  }
+
+  static List<int> _parseFieldValues(List<String> parts, [int offset = 0]) {
+    final items = parts
+        .mapIndexed((i, p) => _parseField(p, offset + i + 1))
+        .expand((list) => list!)
+        .toSet()
+        .toList();
+    items.sort();
+    return items;
+  }
+
+  static List<int>? _parseIntervalField(String field, [int offset = 0]) {
+    var intervalPart = '';
+    if (field.contains('/')) {
+      final parts = field.split('/');
+      if (parts.length > 2) {
+        throw CronFormatException(
+          'More than one `/` for an interval',
+          _currentCronExpression,
+          offset + parts.length - 1,
+        );
+      }
+
+      field = parts[0].trim();
+      intervalPart = parts[1].trim();
+    }
+
+    final interval = intervalPart.isEmpty ? 1 : int.tryParse(intervalPart);
+    if (interval == null) {
+      throw CronFormatException(
+        'Invalid interval value: $intervalPart',
+        _currentCronExpression,
+        offset + 1,
+      );
+    }
+    if (interval < 1) {
+      throw CronFormatException(
+        'Invalid interval value: $intervalPart',
+        _currentCronExpression,
+        offset + 1,
+      );
+    }
+
+    if (field == '*') {
+      return List.generate(120 ~/ interval, (i) => i * interval);
+    } else if (field.contains('-')) {
+      return _parseIntervalRange(field, interval, offset);
+    }
+
+    throw CronFormatException(
+      'Invalid field value: $field',
+      _currentCronExpression,
+      offset,
+    );
+  }
+
+  static List<int>? _parseIntervalRange(
+    String field,
+    int interval, [
+    int offset = 0,
+  ]) {
+    final ranges = field.split('-');
+    if (ranges.length == 2) {
+      final lower = int.tryParse(ranges.first) ?? -1;
+      final higher = int.tryParse(ranges.last) ?? -1;
+      if (lower <= higher) {
+        return List.generate(
+          (higher - lower + 1) ~/ interval,
+          (i) => i * interval + lower,
+        );
+      }
+    }
+    throw CronFormatException(
+      'Invalid range: $field',
+      _currentCronExpression,
+      offset + ranges.length - 1,
     );
   }
 
@@ -161,103 +323,13 @@ class Cron {
   }
 }
 
-/// Parses a weekday field, converting 0 to 7 to represent Sunday.
-List<int>? _parseWeekdayField(String? field) {
-  final parsed = _parseFieldWithConstraint(field, 0, 7);
-  return parsed?.map((x) => x == 0 ? 7 : x).toSet().toList();
-}
-
-/// Parses a cron field with minimum and maximum constraints.
-List<int>? _parseFieldWithConstraint(String? field, int min, int max) {
-  return _parseField(field)?.where((x) => x >= min && x <= max).toList();
-}
-
-/// Parses a cron field and returns a list of allowed values.
-List<int>? _parseField(dynamic constraint) {
-  if (constraint == null) return null;
-  if (constraint is int) return [constraint];
-  if (constraint is List<int>) return constraint;
-  if (constraint is String) {
-    if (constraint == '*') return List.generate(60, (i) => i);
-    if (constraint == '') return null;
-    final parts = constraint.split(',');
-    if (parts.length > 1) {
-      return _parseFieldValues(parts);
-    }
-
-    final singleValue = int.tryParse(constraint);
-    if (singleValue != null) return [singleValue];
-
-    return _parseIntervalField(constraint);
-  }
-
-  throw CronFormatException(
-    'Invalid cron expression. Unable to parse: $constraint',
-  );
-}
-
-/// Parses [parts] which are comma-separated values in a cron field.
-List<int> _parseFieldValues(List<String> parts) {
-  final items = parts.map(_parseField).expand((list) => list!).toSet().toList();
-  items.sort();
-  return items;
-}
-
-/// Parses a cron field that may contain an interval (e.g., "*/5" or "1-10/2").
-List<int>? _parseIntervalField(String field) {
-  var intervalPart = '';
-  if (field.contains('/')) {
-    final parts = field.split('/');
-    if (parts.length > 2) {
-      throw CronFormatException(
-        'Invalid cron expression. More than one `/` for intervals: $field',
-      );
-    }
-
-    field = parts[0].trim();
-    intervalPart = parts[1].trim();
-  }
-
-  final interval = intervalPart.isEmpty ? 1 : int.tryParse(intervalPart);
-  if (interval == null) {
-    throw CronFormatException(
-      'Invalid cron expression. Invalid interval value: $intervalPart',
-    );
-  }
-  if (interval < 1) {
-    throw CronFormatException(
-      'Invalid cron expression. Invalid interval value: $intervalPart',
-    );
-  }
-
-  if (field == '*') {
-    return List.generate(120 ~/ interval, (i) => i * interval);
-  } else if (field.contains('-')) {
-    return _parseIntervalRange(field, interval);
-  }
-
-  return null;
-}
-
-/// Parses a cron field that contains a range with an interval (e.g., "1-10/2").
-List<int>? _parseIntervalRange(String field, int interval) {
-  final ranges = field.split('-');
-  if (ranges.length == 2) {
-    final lower = int.tryParse(ranges.first) ?? -1;
-    final higher = int.tryParse(ranges.last) ?? -1;
-    if (lower <= higher) {
-      return List.generate(
-        (higher - lower + 1) ~/ interval,
-        (i) => i * interval + lower,
-      );
-    }
-  }
-  return null;
-}
-
 /// Exception thrown when a cron data does not have an expected
 /// format and cannot be parsed or processed.
 class CronFormatException extends FormatException {
   /// Creates a new `CronFormatException` with an optional error [message].
-  CronFormatException([super.message]);
+  CronFormatException([
+    super.message,
+    super.source,
+    super.offset,
+  ]);
 }

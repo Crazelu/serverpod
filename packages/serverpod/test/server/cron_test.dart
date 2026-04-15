@@ -204,13 +204,16 @@ void main() {
     'when parsing, '
     'then a CronFormatException is thrown',
     () {
+      const expression = '* * *';
       expect(
-        () => Cron.parse('* * *'),
+        () => Cron.parse(expression),
         throwsA(
           isA<CronFormatException>().having(
-            (e) => e.message,
+            (e) => e.toString(),
             'message',
-            'Invalid cron expression: * * *. Only 5-field and 6-field formats are supported.',
+            contains(
+              'Invalid cron expression: $expression. Only 5-field and 6-field formats are supported.',
+            ),
           ),
         ),
       );
@@ -222,13 +225,16 @@ void main() {
     'when parsing, '
     'then a CronFormatException is thrown',
     () {
+      const expression = '* * * * * * *';
       expect(
-        () => Cron.parse('* * * * * * *'),
+        () => Cron.parse(expression),
         throwsA(
           isA<CronFormatException>().having(
-            (e) => e.message,
+            (e) => e.toString(),
             'message',
-            'Invalid cron expression: * * * * * * *. Only 5-field and 6-field formats are supported.',
+            contains(
+              'Invalid cron expression: $expression. Only 5-field and 6-field formats are supported.',
+            ),
           ),
         ),
       );
@@ -244,9 +250,9 @@ void main() {
         () => Cron.parse('*/* * * * *'),
         throwsA(
           isA<CronFormatException>().having(
-            (e) => e.message,
+            (e) => e.toString(),
             'message',
-            'Invalid cron expression. Invalid interval value: *',
+            contains('Invalid interval value: * (at character 3)'),
           ),
         ),
       );
@@ -259,12 +265,12 @@ void main() {
     'then a CronFormatException is thrown',
     () {
       expect(
-        () => Cron.parse('*/0 * * * *'),
+        () => Cron.parse('* * * * */0 *'),
         throwsA(
           isA<CronFormatException>().having(
-            (e) => e.message,
+            (e) => e.toString(),
             'message',
-            'Invalid cron expression. Invalid interval value: 0',
+            contains('Invalid interval value: 0 (at character 11)'),
           ),
         ),
       );
@@ -277,12 +283,12 @@ void main() {
     'then a CronFormatException is thrown',
     () {
       expect(
-        () => Cron.parse('*/2/3 * * * *'),
+        () => Cron.parse('* */2/3 * * *'),
         throwsA(
           isA<CronFormatException>().having(
-            (e) => e.message,
+            (e) => e.toString(),
             'message',
-            'Invalid cron expression. More than one `/` for intervals: */2/3',
+            contains('More than one `/` for an interval (at character 6)'),
           ),
         ),
       );
@@ -294,13 +300,16 @@ void main() {
     'when parsing, '
     'then a CronFormatException is thrown',
     () {
+      const expression = 'invalidExpression';
       expect(
-        () => Cron.parse('invalidExpression'),
+        () => Cron.parse(expression),
         throwsA(
           isA<CronFormatException>().having(
-            (e) => e.message,
+            (e) => e.toString(),
             'message',
-            'Invalid cron expression: invalidExpression. Only 5-field and 6-field formats are supported.',
+            contains(
+              'Invalid cron expression: $expression. Only 5-field and 6-field formats are supported.',
+            ),
           ),
         ),
       );
