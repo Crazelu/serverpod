@@ -93,47 +93,18 @@ class Cron {
     final months = fields[4];
     final weekdays = fields[5];
 
-    int offset = seconds == null ? 0 : 1;
+    List<int> offsets = List.generate(fields.length, (i) {
+      if (i == 0) return seconds == null ? 0 : 1;
+      final sublist = fields.sublist(0, i).whereType<String>();
+      return sublist.length * 2 + 1;
+    });
 
-    final parsedSeconds = _parseField(
-      seconds,
-      offset,
-    )?.where((x) => x >= 0 && x <= 59).toList();
-
-    offset += (seconds?.length ?? 0) + 1;
-
-    final parsedMinutes = _parseField(
-      minutes,
-      offset,
-    )?.where((x) => x >= 0 && x <= 59).toList();
-
-    offset += (minutes?.length ?? 0) + 1;
-
-    final parsedHours = _parseField(
-      hours,
-      offset,
-    )?.where((x) => x >= 0 && x <= 23).toList();
-
-    offset += (hours?.length ?? 0) + 1;
-
-    final parsedDays = _parseField(
-      days,
-      offset,
-    )?.where((x) => x >= 1 && x <= 31).toList();
-
-    offset += (days?.length ?? 0) + 1;
-
-    final parsedMonths = _parseField(
-      months,
-      offset,
-    )?.where((x) => x >= 1 && x <= 12).toList();
-
-    offset += (months?.length ?? 0) + 1;
-
-    final parsedWeekdays = _parseWeekdayField(
-      weekdays,
-      offset,
-    );
+    final parsedSeconds = _parseFieldWithConstraint(seconds, offsets[0], 0, 59);
+    final parsedMinutes = _parseFieldWithConstraint(minutes, offsets[1], 0, 59);
+    final parsedHours = _parseFieldWithConstraint(hours, offsets[2], 0, 23);
+    final parsedDays = _parseFieldWithConstraint(days, offsets[3], 1, 31);
+    final parsedMonths = _parseFieldWithConstraint(months, offsets[4], 1, 12);
+    final parsedWeekdays = _parseWeekdayField(weekdays, offsets[5]);
 
     return Cron._(
       parsedSeconds,
