@@ -170,13 +170,12 @@ class _RecurringFutureCallDispatchImpl
     DateTime? start,
   }) {
     final now = _i2.clock.now().toUtc();
-    DateTime effectiveStart = start ?? now.add(interval);
     return _FutureCallRef(
       (name, object) {
         return _futureCallManager.scheduleFutureCall(
           name,
           object,
-          effectiveStart,
+          start ?? now.add(interval),
           _serverId,
           _identifier,
           scheduling: _i1.IntervalFutureCallScheduling(

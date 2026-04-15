@@ -228,7 +228,7 @@ void main() {
               );
 
               test(
-                'then the overriden cron method schedules future call with CronFutureCallScheduling',
+                'has an overriden cron method that schedules future call with CronFutureCallScheduling',
                 () {
                   expect(
                     futureCallsFile,
@@ -275,64 +275,38 @@ void main() {
                 },
               );
 
-              group(
-                'then overriden every method',
+              test(
+                'has an overriden every method that schedules future call with IntervalFutureCallScheduling',
                 () {
-                  test(
-                    'contains start time computation',
-                    () {
-                      expect(
-                        futureCallsFile,
-                        matches(
-                          r'class _RecurringFutureCallDispatchImpl\n'
-                          r'    extends _i\d.RecurringFutureCallDispatch<_FutureCallRef> \{\n'
-                          r'[\s\S]*'
-                          r'  \@override\n'
-                          r'  _FutureCallRef every\(\n'
-                          r'    Duration interval, \{\n'
-                          r'    DateTime\? start,\n'
-                          r'  \}\) \{\n'
-                          r'    final now = _i\d.clock.now\(\).toUtc\(\);\n'
-                          r'    DateTime effectiveStart = start \?\? now.add\(interval\);\n',
-                        ),
-                      );
-                    },
-                  );
-
-                  test(
-                    'schedules future call with IntervalFutureCallScheduling',
-                    () {
-                      expect(
-                        futureCallsFile,
-                        matches(
-                          r'class _RecurringFutureCallDispatchImpl\n'
-                          r'    extends _i\d.RecurringFutureCallDispatch<_FutureCallRef> \{\n'
-                          r'[\s\S]*'
-                          r'  \@override\n'
-                          r'  _FutureCallRef every\(\n'
-                          r'    Duration interval, \{\n'
-                          r'    DateTime\? start,\n'
-                          r'  \}\) \{\n'
-                          r'[\s\S]*'
-                          r'    return _FutureCallRef\(\n'
-                          r'      \(name, object\) \{\n'
-                          r'        return _futureCallManager.scheduleFutureCall\(\n'
-                          r'          name,\n'
-                          r'          object,\n'
-                          r'          effectiveStart,\n'
-                          r'          _serverId,\n'
-                          r'          _identifier,\n'
-                          r'          scheduling: _i\d.IntervalFutureCallScheduling\(\n'
-                          r'            interval: interval,\n'
-                          r'            start: start,\n'
-                          r'          \),\n'
-                          r'        \);\n'
-                          r'      \},\n'
-                          r'    \);\n'
-                          r'  \}\n',
-                        ),
-                      );
-                    },
+                  expect(
+                    futureCallsFile,
+                    matches(
+                      r'class _RecurringFutureCallDispatchImpl\n'
+                      r'    extends _i\d.RecurringFutureCallDispatch<_FutureCallRef> \{\n'
+                      r'[\s\S]*'
+                      r'  \@override\n'
+                      r'  _FutureCallRef every\(\n'
+                      r'    Duration interval, \{\n'
+                      r'    DateTime\? start,\n'
+                      r'  \}\) \{\n'
+                      r'    final now = _i\d.clock.now\(\).toUtc\(\);\n'
+                      r'    return _FutureCallRef\(\n'
+                      r'      \(name, object\) \{\n'
+                      r'        return _futureCallManager.scheduleFutureCall\(\n'
+                      r'          name,\n'
+                      r'          object,\n'
+                      r'          start \?\? now.add\(interval\),\n'
+                      r'          _serverId,\n'
+                      r'          _identifier,\n'
+                      r'          scheduling: _i\d.IntervalFutureCallScheduling\(\n'
+                      r'            interval: interval,\n'
+                      r'            start: start,\n'
+                      r'          \),\n'
+                      r'        \);\n'
+                      r'      \},\n'
+                      r'    \);\n'
+                      r'  \}\n',
+                    ),
                   );
                 },
               );
