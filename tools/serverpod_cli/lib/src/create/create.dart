@@ -348,7 +348,7 @@ Future<bool> _renderTemplates(
   Map<String, Object?> context,
 ) async {
   return await log.progress('Finalizing project files', () async {
-    await TemplateRenderer(dir: dir, context: context).render();
+    await TemplateRenderer(dir: dir).render(context);
     return true;
   });
 }

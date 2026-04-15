@@ -3,36 +3,36 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:whiskers/whiskers.dart';
 
-/// Responsible for rendering template files in a directory based on a provided context.
+/// Responsible for rendering template files in a directory using provided context.
 /// It processes both file contents and directory names,
 /// allowing for dynamic project structures.
 class TemplateRenderer {
   /// Creates a [TemplateRenderer].
-  TemplateRenderer({
-    required this.dir,
-    required this.context,
-  });
+  TemplateRenderer({required this.dir});
 
   /// The target directory containing the template files to be rendered.
   final Directory dir;
 
-  /// The context used for rendering the templates, where keys are variable names
-  final Map<String, Object?> context;
-
-  /// Renders the templates in the target directory based on the provided context.
-  Future<void> render() async {
-    await _renderDirectory(dir);
+  /// Renders the templates in the target directory using [context].
+  Future<void> render(Map<String, Object?> context) async {
+    await _renderDirectory(dir, context);
   }
 
   /// Recursively renders all files and directories within the specified directory.
-  Future<void> _renderDirectory(Directory dir) async {
+  Future<void> _renderDirectory(
+    Directory dir,
+    Map<String, Object?> context,
+  ) async {
     final entries = dir.listSync();
 
     for (final entry in entries) {
       if (entry is File) {
-        await _renderFile(entry);
+        await _renderFile(entry, context);
       } else if (entry is Directory) {
-        final renderedName = _renderDirectoryName(p.basename(entry.path));
+        final renderedName = _renderDirectoryName(
+          p.basename(entry.path),
+          context,
+        );
         final newPath = p.join(p.dirname(entry.path), renderedName);
 
         if (renderedName.isEmpty) {
@@ -40,16 +40,16 @@ class TemplateRenderer {
         } else if (newPath != entry.path) {
           try {
             await entry.rename(newPath);
-            await _renderDirectory(Directory(newPath));
+            await _renderDirectory(Directory(newPath), context);
           } catch (_) {}
         } else {
-          await _renderDirectory(entry);
+          await _renderDirectory(entry, context);
         }
       }
     }
   }
 
-  String _renderTemplate(String content) {
+  String _renderTemplate(String content, Map<String, Object?> context) {
     try {
       var template = Template(content, lenient: true);
       return template.renderString(
@@ -66,10 +66,10 @@ class TemplateRenderer {
   /// Renders template directives in [file]'s content and
   /// rewrites [file] with the rendering result.
   /// If the [file] is empty after rewriting, the [file] is deleted.
-  Future<void> _renderFile(File file) async {
+  Future<void> _renderFile(File file, Map<String, Object?> context) async {
     final content = await file.readAsString();
     final processedContent = _preprocessContent(content);
-    final renderedContent = _renderTemplate(processedContent);
+    final renderedContent = _renderTemplate(processedContent, context);
 
     if (renderedContent.trim().isEmpty) {
       await file.delete();
@@ -99,9 +99,12 @@ class TemplateRenderer {
   }
 
   /// Formats the directory name as a template and returns the rendered name.
-  String _renderDirectoryName(String dirName) {
+  String _renderDirectoryName(String dirName, Map<String, Object?> context) {
     final result = _formatDirectoryTemplate(dirName).replaceAll(r'{{\', '{{/');
-    return _renderTemplate(result).replaceAll(RegExp(r'\{\{/ ?\}\}'), '');
+    return _renderTemplate(
+      result,
+      context,
+    ).replaceAll(RegExp(r'\{\{/ ?\}\}'), '');
   }
 
   /// Converts short hand template directive variables in directory name to
