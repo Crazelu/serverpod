@@ -41,7 +41,9 @@ class TemplateRenderer {
           try {
             await entry.rename(newPath);
             await _renderDirectory(Directory(newPath), context);
-          } catch (_) {}
+          } on FileSystemException {
+            // Already gone.
+          }
         } else {
           await _renderDirectory(entry, context);
         }
@@ -100,37 +102,17 @@ class TemplateRenderer {
 
   /// Formats the directory name as a template and returns the rendered name.
   String _renderDirectoryName(String dirName, Map<String, Object?> context) {
-    final result = _formatDirectoryTemplate(dirName).replaceAll(r'{{\', '{{/');
     return _renderTemplate(
-      result,
+      dirName.replaceAll(r'{{!', '{{/'),
       context,
     ).replaceAll(RegExp(r'\{\{/ ?\}\}'), '');
-  }
-
-  /// Converts short hand template directive variables in directory name to
-  /// fully formed variable names.
-  /// For example, `{{#web}}web{{\web}}` will be transformed to
-  /// `{{#SERVERPOD_ENABLE_WEB}}web{{\SERVERPOD_ENABLE_WEB}}`.
-  String _formatDirectoryTemplate(String dirName) {
-    return dirName.replaceAllMapped(
-      RegExp(r'(\{\{[#\\])([a-z][a-zA-Z0-9]*)(\}\})'),
-      (match) {
-        final prefix = match.group(1)!;
-        final variable = match.group(2)!;
-        final suffix = match.group(3)!;
-
-        final name = variable
-            .replaceAllMapped(RegExp(r'([a-zA-Z0-9])'), (m) => '${m[1]}')
-            .toUpperCase();
-
-        return '${prefix}SERVERPOD_ENABLE_$name$suffix';
-      },
-    );
   }
 
   Future<void> _deleteDirectory(Directory dir) async {
     try {
       await dir.delete(recursive: true);
-    } catch (_) {}
+    } on FileSystemException {
+      // Already gone.
+    }
   }
 }

@@ -1,26 +1,26 @@
-// {{#SERVERPOD_ENABLE_WEB}}
+// {{#web}}
 import 'dart:io';
-// {{/SERVERPOD_ENABLE_WEB}}
+// {{/web}}
 
 import 'package:serverpod/serverpod.dart';
-// {{#SERVERPOD_ENABLE_AUTH}}
+// {{#auth}}
 import 'package:serverpod_auth_idp_server/core.dart';
 import 'package:serverpod_auth_idp_server/providers/email.dart';
-// {{/SERVERPOD_ENABLE_AUTH}}
+// {{/auth}}
 
 import 'src/generated/endpoints.dart';
 import 'src/generated/protocol.dart';
-// {{#SERVERPOD_ENABLE_WEB}}
+// {{#web}}
 import 'src/web/routes/app_config_route.dart';
 import 'src/web/routes/root.dart';
-// {{/SERVERPOD_ENABLE_WEB}}
+// {{/web}}
 
 /// The starting point of the Serverpod server.
 void run(List<String> args) async {
   // Initialize Serverpod and connect it with your generated code.
   final pod = Serverpod(args, Protocol(), Endpoints());
 
-  // {{#SERVERPOD_ENABLE_AUTH}}
+  // {{#auth}}
   // Initialize authentication services for the server.
   // Token managers will be used to validate and issue authentication keys,
   // and the identity providers will be the authentication options available for users.
@@ -37,9 +37,9 @@ void run(List<String> args) async {
       ),
     ],
   );
-  // {{/SERVERPOD_ENABLE_AUTH}}
+  // {{/auth}}
 
-  // {{#SERVERPOD_ENABLE_WEB}}
+  // {{#web}}
   // Setup a default page at the web root.
   // These are used by the default page.
   pod.webServer.addRoute(RootRoute(), '/');
@@ -81,13 +81,13 @@ void run(List<String> args) async {
       '/app/**',
     );
   }
-  // {{/SERVERPOD_ENABLE_WEB}}
+  // {{/web}}
 
   // Start the server.
   await pod.start();
 }
 
-// {{#SERVERPOD_ENABLE_AUTH}}
+// {{#auth}}
 void _sendRegistrationCode(
   Session session, {
   required String email,
@@ -112,4 +112,4 @@ void _sendPasswordResetCode(
   session.log('[EmailIdp] Password reset code ($email): $verificationCode');
 }
 
-// {{/SERVERPOD_ENABLE_AUTH}}
+// {{/auth}}

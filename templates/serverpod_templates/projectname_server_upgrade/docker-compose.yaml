@@ -1,5 +1,5 @@
 services:
-  # {{#SERVERPOD_ENABLE_POSTGRES}}
+  # {{#postgres}}
   # Development services
   postgres:
     image: pgvector/pgvector:pg16
@@ -11,9 +11,9 @@ services:
       POSTGRES_PASSWORD: "DB_PASSWORD"
     volumes:
       - projectname_data:/var/lib/postgresql/data
-  # {{/SERVERPOD_ENABLE_POSTGRES}}
+  # {{/postgres}}
 
-  # {{#SERVERPOD_ENABLE_REDIS}}
+  # {{#redis}}
   redis:
     image: redis:6.2.6
     ports:
@@ -21,9 +21,9 @@ services:
     command: redis-server --requirepass "REDIS_PASSWORD"
     environment:
       - REDIS_REPLICATION_MODE=master
-  # {{/SERVERPOD_ENABLE_REDIS}}
+  # {{/redis}}
 
-  # {{#SERVERPOD_ENABLE_POSTGRES}}
+  # {{#postgres}}
   # Test services
   postgres_test:
     image: pgvector/pgvector:pg16
@@ -35,9 +35,9 @@ services:
       POSTGRES_PASSWORD: "DB_TEST_PASSWORD"
     volumes:
       - projectname_test_data:/var/lib/postgresql/data
-  # {{/SERVERPOD_ENABLE_POSTGRES}}
+  # {{/postgres}}
 
-  # {{#SERVERPOD_ENABLE_REDIS}}
+  # {{#redis}}
   redis_test:
     image: redis:6.2.6
     ports:
@@ -45,7 +45,7 @@ services:
     command: redis-server --requirepass "REDIS_TEST_PASSWORD"
     environment:
       - REDIS_REPLICATION_MODE=master
-  # {{/SERVERPOD_ENABLE_REDIS}}
+  # {{/redis}}
 
 volumes:
   projectname_data:
