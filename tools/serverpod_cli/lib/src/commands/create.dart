@@ -124,7 +124,12 @@ class CreateCommand extends ServerpodCommand<CreateOption> {
     }
 
     // TODO(Lucky): Build context from interactive user options/sane defaults.
-    final templateContext = <String, Object?>{};
+    final templateContext = <String, Object?>{
+      'redis': true,
+      'postgres': true,
+      'auth': true,
+      'web': true,
+    };
 
     if (!await performCreate(
       name,
