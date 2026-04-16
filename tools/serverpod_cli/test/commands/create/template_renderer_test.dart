@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
+import 'package:serverpod_cli/src/create/template_context.dart';
 import 'package:serverpod_cli/src/create/template_renderer.dart';
 import 'package:test/test.dart';
 
@@ -30,7 +31,7 @@ void main() {
           ),
         );
         await webDir.create(recursive: true);
-        await templateRenderer.render({'web': true});
+        await templateRenderer.render(TemplateContext(web: true));
 
         await expectLater(
           Directory(p.join(testDir.path, '{{#web}}web{{!web}}')).exists(),
@@ -55,7 +56,7 @@ void main() {
           ),
         );
         await webDir.create(recursive: true);
-        await templateRenderer.render({'web': false});
+        await templateRenderer.render(TemplateContext(web: false));
 
         await expectLater(
           Directory(p.join(testDir.path, '{{#web}}web{{!web}}')).exists(),
@@ -88,16 +89,16 @@ void main() {
         );
         await authDir.create(recursive: true);
 
-        await templateRenderer.render({'auth': true, 'web': false});
+        await templateRenderer.render(TemplateContext(auth: false, web: true));
 
         await expectLater(
           Directory(p.join(testDir.path, 'web')).exists(),
-          completion(false),
+          completion(true),
         );
 
         await expectLater(
           Directory(p.join(testDir.path, 'auth')).exists(),
-          completion(true),
+          completion(false),
         );
       },
     );
@@ -111,7 +112,7 @@ void main() {
         );
         await authDir.create(recursive: true);
 
-        await templateRenderer.render({});
+        await templateRenderer.render(TemplateContext());
 
         await expectLater(
           Directory(p.join(testDir.path, 'auth')).exists(),
@@ -132,7 +133,7 @@ void main() {
           ),
         );
         await webDir.create(recursive: true);
-        await templateRenderer.render({'web': true});
+        await templateRenderer.render(TemplateContext(web: true));
 
         await expectLater(
           Directory(p.join(testDir.path, '{{#web}}web{{+web}}')).exists(),
@@ -146,43 +147,42 @@ void main() {
     );
 
     test(
-      'when rendering a file with true context values'
+      'when rendering a file with true context values, '
       'then all the sections with conditional directives are retained in the file',
       () async {
         final testFile = File(p.join(testDir.path, 'test.dart'));
         await testFile.writeAsString('''
 import 'dart:io';
-// {{#auth}}
-import 'auth.dart';
-// {{/auth}}
+// {{#postgres}}
+import 'postgres.dart';
+// {{/postgres}}
 // {{#web}}
 import 'web.dart';
 // {{/web}}
 
 void main() {
-  // {{#auth}}
-  print('auth enabled');
-  // {{/auth}}
+  // {{#postgres}}
+  print('postgres enabled');
+  // {{/postgres}}
   // {{#web}}
   print('web enabled');
   // {{/web}}
 }
 ''');
 
-        await templateRenderer.render({
-          'auth': true,
-          'web': true,
-        });
+        await templateRenderer.render(
+          TemplateContext(web: true, postgres: true),
+        );
         final content = await testFile.readAsString();
         expect(
           content,
           matches(
             r"import \'dart:io\';\n"
-            r"import \'auth.dart\';\n"
+            r"import \'postgres.dart\';\n"
             r"import \'web.dart\';\n"
             r'\n'
             r'void main\(\) \{\n'
-            r"  print\(\'auth enabled\'\);\n"
+            r"  print\(\'postgres enabled\'\);\n"
             r"  print\(\'web enabled\'\);\n"
             r'\}\n',
           ),
@@ -197,36 +197,35 @@ void main() {
         final testFile = File(p.join(testDir.path, 'test.dart'));
         await testFile.writeAsString('''
 import 'dart:io';
-// {{#auth}}
-import 'auth.dart';
-// {{/auth}}
+// {{#postgres}}
+import 'postgres.dart';
+// {{/postgres}}
 // {{#web}}
 import 'web.dart';
 // {{/web}}
 
 void main() {
-  // {{#auth}}
-  print('auth enabled');
-  // {{/auth}}
+  // {{#postgres}}
+  print('postgres enabled');
+  // {{/postgres}}
   // {{#web}}
   print('web enabled');
   // {{/web}}
 }
 ''');
 
-        await templateRenderer.render({
-          'auth': true,
-          'web': false,
-        });
+        await templateRenderer.render(
+          TemplateContext(postgres: true, web: false),
+        );
         final content = await testFile.readAsString();
         expect(
           content,
           matches(
             r"import \'dart:io\';\n"
-            r"import \'auth.dart\';\n"
+            r"import \'postgres.dart\';\n"
             r'\n'
             r'void main\(\) \{\n'
-            r"  print\(\'auth enabled\'\);\n"
+            r"  print\(\'postgres enabled\'\);\n"
             r'\}\n',
           ),
         );
@@ -257,7 +256,7 @@ void main() {
 }
 ''');
 
-        await templateRenderer.render({});
+        await templateRenderer.render(TemplateContext());
 
         final content = await testFile.readAsString();
         expect(
@@ -286,7 +285,7 @@ import 'auth.web';
 // {{/web}}
 ''');
 
-        await templateRenderer.render({});
+        await templateRenderer.render(TemplateContext());
         await expectLater(testFile.exists(), completion(false));
       },
     );
@@ -305,7 +304,7 @@ development:
   database: 'DB_PASSWORD'
 ''');
 
-        await templateRenderer.render({'redis': true});
+        await templateRenderer.render(TemplateContext(redis: true));
 
         final content = await testFile.readAsString();
         expect(
@@ -333,7 +332,7 @@ development:
   database: 'DB_PASSWORD'
 ''');
 
-        await templateRenderer.render({'redis': false});
+        await templateRenderer.render(TemplateContext(redis: false));
 
         final content = await testFile.readAsString();
         expect(
@@ -354,18 +353,17 @@ development:
           p.join(
             testDir.path,
             '{{#web}}web{{!web}}',
-            '{{#auth}}auth{{!auth}}',
+            '{{#postgres}}postgres{{!postgres}}',
           ),
         );
         await nestedDir.create(recursive: true);
 
-        await templateRenderer.render({
-          'auth': true,
-          'web': true,
-        });
+        await templateRenderer.render(
+          TemplateContext(postgres: true, web: true),
+        );
 
         await expectLater(
-          Directory(p.join(testDir.path, 'web', 'auth')).exists(),
+          Directory(p.join(testDir.path, 'web', 'postgres')).exists(),
           completion(true),
         );
       },
@@ -380,18 +378,17 @@ development:
           p.join(
             testDir.path,
             '{{#web}}web{{!web}}',
-            '{{#auth}}auth{{!auth}}',
+            '{{#postgres}}postgres{{!postgres}}',
           ),
         );
         await nestedDir.create(recursive: true);
 
-        await templateRenderer.render({
-          'auth': true,
-          'web': false,
-        });
+        await templateRenderer.render(
+          TemplateContext(postgres: true, web: false),
+        );
 
         await expectLater(
-          Directory(p.join(testDir.path, 'web', 'auth')).exists(),
+          Directory(p.join(testDir.path, 'web', 'postgres')).exists(),
           completion(false),
         );
       },
@@ -406,15 +403,14 @@ development:
           p.join(
             testDir.path,
             '{{#web}}web{{!web}}',
-            '{{#auth}}auth{{!auth}}',
+            '{{#postgres}}postgres{{!postgres}}',
           ),
         );
         await nestedDir.create(recursive: true);
 
-        await templateRenderer.render({
-          'auth': false,
-          'web': true,
-        });
+        await templateRenderer.render(
+          TemplateContext(postgres: false, web: true),
+        );
 
         await expectLater(
           Directory(p.join(testDir.path, 'web')).exists(),
@@ -422,7 +418,7 @@ development:
         );
 
         await expectLater(
-          Directory(p.join(testDir.path, 'web', 'auth')).exists(),
+          Directory(p.join(testDir.path, 'web', 'postgres')).exists(),
           completion(false),
         );
       },

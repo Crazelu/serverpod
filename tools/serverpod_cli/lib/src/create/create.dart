@@ -10,6 +10,7 @@ import 'package:pub_semver/pub_semver.dart';
 import 'package:serverpod_cli/src/config/experimental_feature.dart';
 import 'package:serverpod_cli/src/create/database_setup.dart';
 import 'package:serverpod_cli/src/create/generate_files.dart';
+import 'package:serverpod_cli/src/create/template_context.dart';
 import 'package:serverpod_cli/src/downloads/resource_manager.dart';
 import 'package:serverpod_cli/src/generated/version.dart';
 import 'package:serverpod_cli/src/scripts/script.dart';
@@ -51,7 +52,7 @@ Future<bool> performCreate(
   ServerpodTemplateType template,
   bool force, {
   required bool? interactive,
-  required Map<String, Object?> templateContext,
+  required TemplateContext context,
 }) async {
   // If the name is a dot, we can either create a new project in the current
   // directory or upgrade an existing project.
@@ -60,7 +61,7 @@ Future<bool> performCreate(
       return await _performUpgrade(
         template,
         interactive: interactive,
-        templateContext: templateContext,
+        context: context,
       );
     }
 
@@ -158,7 +159,7 @@ Future<bool> performCreate(
   }
 
   if (template == ServerpodTemplateType.server) {
-    success &= await _renderTemplates(serverpodDirs.serverDir, templateContext);
+    success &= await _renderTemplates(serverpodDirs.serverDir, context);
   }
 
   success &= await log.progress('Getting workspace dependencies.', () {
@@ -269,7 +270,7 @@ Future<bool> performCreate(
 Future<bool> _performUpgrade(
   ServerpodTemplateType template, {
   required bool? interactive,
-  required Map<String, Object?> templateContext,
+  required TemplateContext context,
 }) async {
   if (template != ServerpodTemplateType.server) {
     log.error(
@@ -313,7 +314,7 @@ Future<bool> _performUpgrade(
     },
   );
 
-  success &= await _renderTemplates(serverpodDir.serverDir, templateContext);
+  success &= await _renderTemplates(serverpodDir.serverDir, context);
 
   success &= await _runGenerate(
     serverpodDir.serverDir,
@@ -345,9 +346,9 @@ Future<bool> _performUpgrade(
 /// Parses and renders the template files in the given directory.
 Future<bool> _renderTemplates(
   Directory dir,
-  Map<String, Object?> context,
+  TemplateContext context,
 ) async {
-  return await log.progress('Finalizing project files', () async {
+  return await log.progress('Applying template options', () async {
     await TemplateRenderer(dir: dir).render(context);
     return true;
   });

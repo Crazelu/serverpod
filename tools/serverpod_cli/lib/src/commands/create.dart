@@ -1,6 +1,7 @@
 import 'package:cli_tools/cli_tools.dart';
 import 'package:config/config.dart';
 import 'package:serverpod_cli/src/create/create.dart';
+import 'package:serverpod_cli/src/create/template_context.dart';
 import 'package:serverpod_cli/src/downloads/resource_manager.dart';
 import 'package:serverpod_cli/src/runner/serverpod_command.dart';
 import 'package:serverpod_cli/src/runner/serverpod_command_runner.dart';
@@ -123,20 +124,19 @@ class CreateCommand extends ServerpodCommand<CreateOption> {
       }
     }
 
-    // TODO(Lucky): Build context from interactive user options/sane defaults.
-    final templateContext = <String, Object?>{
-      'redis': true,
-      'postgres': true,
-      'auth': true,
-      'web': true,
-    };
+    final context = TemplateContext(
+      auth: true,
+      redis: true,
+      postgres: true,
+      web: true,
+    );
 
     if (!await performCreate(
       name,
       template,
       force,
       interactive: interactive,
-      templateContext: templateContext,
+      context: context,
     )) {
       throw ExitException.error();
     }

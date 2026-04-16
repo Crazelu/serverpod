@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
+import 'package:serverpod_cli/src/create/template_context.dart';
 import 'package:whiskers/whiskers.dart';
 
 /// Responsible for rendering template files in a directory using provided context.
@@ -14,14 +15,14 @@ class TemplateRenderer {
   final Directory dir;
 
   /// Renders the templates in the target directory using [context].
-  Future<void> render(Map<String, Object?> context) async {
+  Future<void> render(TemplateContext context) async {
     await _renderDirectory(dir, context);
   }
 
   /// Recursively renders all files and directories within the specified directory.
   Future<void> _renderDirectory(
     Directory dir,
-    Map<String, Object?> context,
+    TemplateContext context,
   ) async {
     final entries = dir.listSync();
 
@@ -51,11 +52,11 @@ class TemplateRenderer {
     }
   }
 
-  String _renderTemplate(String content, Map<String, Object?> context) {
+  String _renderTemplate(String content, TemplateContext context) {
     try {
       var template = Template(content, lenient: true);
       return template.renderString(
-        context,
+        context.toJson(),
         onMissingVariable: (name, context) {
           return '{{$name}}';
         },
@@ -68,7 +69,7 @@ class TemplateRenderer {
   /// Renders template directives in [file]'s content and
   /// rewrites [file] with the rendering result.
   /// If the [file] is empty after rewriting, the [file] is deleted.
-  Future<void> _renderFile(File file, Map<String, Object?> context) async {
+  Future<void> _renderFile(File file, TemplateContext context) async {
     try {
       final content = await file.readAsString();
       final processedContent = _preprocessContent(content);
@@ -105,7 +106,7 @@ class TemplateRenderer {
   }
 
   /// Formats the directory name as a template and returns the rendered name.
-  String _renderDirectoryName(String dirName, Map<String, Object?> context) {
+  String _renderDirectoryName(String dirName, TemplateContext context) {
     return _renderTemplate(
       dirName.replaceAll(r'{{!', '{{/'),
       context,
