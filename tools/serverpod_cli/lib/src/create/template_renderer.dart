@@ -30,7 +30,7 @@ class TemplateRenderer {
       if (entry is File) {
         await _renderFile(entry, context);
       } else if (entry is Directory) {
-        final renderedName = _renderDirectoryName(
+        final renderedName = _renderFileSystemEntityName(
           p.basename(entry.path),
           context,
         );
@@ -66,22 +66,51 @@ class TemplateRenderer {
     }
   }
 
-  /// Renders template directives in [file]'s content and
-  /// rewrites [file] with the rendering result.
-  /// If the [file] is empty after rewriting, the [file] is deleted.
+  /// Renders template directives in [file]'s base name and content.
+  /// Rewrites [file] with the rendering result.
+  /// If the [file] name or its content is empty after rendering, the [file] is deleted.
   Future<void> _renderFile(File file, TemplateContext context) async {
     try {
-      final content = await file.readAsString();
-      final processedContent = _preprocessContent(content);
-      final renderedContent = _renderTemplate(processedContent, context);
-
-      if (renderedContent.trim().isEmpty) {
-        await file.delete();
-      } else if (renderedContent != content) {
-        await file.writeAsString(renderedContent);
-      }
+      final renderedFile = await _renderFileName(file, context);
+      if (renderedFile != null) await _renderFileContent(renderedFile, context);
     } on FileSystemException {
       // File gone or not decodable.
+    }
+  }
+
+  /// Renders template directives in [file]'s base name.
+  /// If rendering results in an empty file name (excluding extension), the file is deleted.
+  Future<File?> _renderFileName(File file, TemplateContext context) async {
+    final fileName = p.basename(file.path);
+    final renderedFileName = _renderFileSystemEntityName(fileName, context);
+    late final extension = p.extension(fileName);
+
+    if (fileName == renderedFileName) return file;
+
+    if (renderedFileName.trim().isEmpty) {
+      await file.delete();
+      return null;
+    } else if (extension.isNotEmpty) {
+      final splits = renderedFileName.split(extension);
+      if (splits.length != 2 || splits.first.trim().isEmpty) {
+        await file.delete();
+        return null;
+      }
+    }
+    return await file.rename(p.join(p.dirname(file.path), renderedFileName));
+  }
+
+  /// Renders template directives in [file]'s content.
+  /// If rendering results in a file with empty content, the file is deleted.
+  Future<void> _renderFileContent(File file, TemplateContext context) async {
+    final content = await file.readAsString();
+    final processedContent = _preprocessContent(content);
+    final renderedContent = _renderTemplate(processedContent, context);
+
+    if (renderedContent.trim().isEmpty) {
+      await file.delete();
+    } else if (renderedContent != content) {
+      await file.writeAsString(renderedContent);
     }
   }
 
@@ -105,10 +134,10 @@ class TemplateRenderer {
     return result;
   }
 
-  /// Formats the directory name as a template and returns the rendered name.
-  String _renderDirectoryName(String dirName, TemplateContext context) {
+  /// Formats the file/directory name as a template and returns the rendered name.
+  String _renderFileSystemEntityName(String name, TemplateContext context) {
     return _renderTemplate(
-      dirName.replaceAll(r'{{!', '{{/'),
+      name.replaceAll(r'{{!', '{{/'),
       context,
     ).replaceAll(RegExp(r'\{\{/ ?\}\}'), '');
   }

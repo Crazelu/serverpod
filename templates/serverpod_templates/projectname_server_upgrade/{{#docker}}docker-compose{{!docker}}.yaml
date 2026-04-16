@@ -46,7 +46,9 @@ services:
     environment:
       - REDIS_REPLICATION_MODE=master
   # {{/redis}}
-
+  
+# {{#postgres}}
 volumes:
   projectname_data:
   projectname_test_data:
+# {{/postgres}}

@@ -21,13 +21,16 @@ insightsServer:
   publicPort: 0
   publicScheme: http
 
+# {{#web}}
 # Configuration for the web test server.
 webServer:
   port: 0
   publicHost: localhost
   publicPort: 0
   publicScheme: http
+# {{/web}}
 
+# {{#database}}
 # This is the database setup for your test server.
 database:
   host: localhost
@@ -35,7 +38,9 @@ database:
   name: projectname_test
   user: postgres
   #maxConnectionCount: 10 # Defaults to 10, a negative or null value removes the limit
+# {{/database}}
 
+# {{#redis}}
 # This is the setup for your Redis test instance.
 redis:
   enabled: false
@@ -43,9 +48,12 @@ redis:
   port: 9091
   #user: # defaults to empty
   #requireSsl: true # defaults to false
+# {{/redis}}
 
 sessionLogs:
+  # {{#database}}
   persistentEnabled: true
+  # {{/database}}
   consoleEnabled: true
 # consoleLogFormat: json # Defaults to "json", options are "text" or "json"
 

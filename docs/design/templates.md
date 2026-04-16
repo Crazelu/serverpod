@@ -65,4 +65,11 @@ For example:
 - `project_name_server_upgrade/{{#web}}web{{!web}}` is processed as `project_name_server_upgrade/{{#web}}web{{/web}}`
 - `project_name_server_upgrade/lib/src/{{#auth}}auth{{!auth}}` is processed as `project_name_server_upgrade/lib/src/{{#auth}}auth{{/auth}}`
 
+Files may also have template directives in their names using the same modified syntax as above. A file with an extension may have only its name before the extension should be enclosed with template directives: `foo/{{#a}}bar{{!a}}.dart`.
+
+For example:
+
+- `project_name_server_upgrade/{{#docker}}Dockerfile{{!docker}}` is processed as `project_name_server_upgrade/{{#docker}}Dockerfile{{/docker}}`
+- `project_name_server_upgrade/config/{{#docker}}passwords{{!docker}}.yaml` is processed as `project_name_server_upgrade/config/{{#docker}}passwords{{/docker}}.yaml`
+
 After the current Serverpod create command runs, then all server files will be rendered to include or remove the conditional sections based on enabled parameters in the context. When rendering results in an empty directory name, then the directory is deleted along with all the files contained in it. Likewise, when rendering results in a file with empty content, then the file is deleted.
