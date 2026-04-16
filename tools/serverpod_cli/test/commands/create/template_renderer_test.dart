@@ -128,14 +128,14 @@ void main() {
         final webDir = Directory(
           p.join(
             testDir.path,
-            '{{#web}}web{{*web}}',
+            '{{#web}}web{{+web}}',
           ),
         );
         await webDir.create(recursive: true);
         await templateRenderer.render({'web': true});
 
         await expectLater(
-          Directory(p.join(testDir.path, '{{#web}}web{{*web}}')).exists(),
+          Directory(p.join(testDir.path, '{{#web}}web{{+web}}')).exists(),
           completion(true),
         );
         await expectLater(
