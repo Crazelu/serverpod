@@ -42,7 +42,7 @@ class TemplateRenderer {
             await entry.rename(newPath);
             await _renderDirectory(Directory(newPath), context);
           } on FileSystemException {
-            // Already gone.
+            // Directory gone.
           }
         } else {
           await _renderDirectory(entry, context);
@@ -69,14 +69,18 @@ class TemplateRenderer {
   /// rewrites [file] with the rendering result.
   /// If the [file] is empty after rewriting, the [file] is deleted.
   Future<void> _renderFile(File file, Map<String, Object?> context) async {
-    final content = await file.readAsString();
-    final processedContent = _preprocessContent(content);
-    final renderedContent = _renderTemplate(processedContent, context);
+    try {
+      final content = await file.readAsString();
+      final processedContent = _preprocessContent(content);
+      final renderedContent = _renderTemplate(processedContent, context);
 
-    if (renderedContent.trim().isEmpty) {
-      await file.delete();
-    } else if (renderedContent != content) {
-      await file.writeAsString(renderedContent);
+      if (renderedContent.trim().isEmpty) {
+        await file.delete();
+      } else if (renderedContent != content) {
+        await file.writeAsString(renderedContent);
+      }
+    } on FileSystemException {
+      // File gone or not decodable.
     }
   }
 
@@ -112,7 +116,7 @@ class TemplateRenderer {
     try {
       await dir.delete(recursive: true);
     } on FileSystemException {
-      // Already gone.
+      // Directory gone.
     }
   }
 }
