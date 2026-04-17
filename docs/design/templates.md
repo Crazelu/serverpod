@@ -6,7 +6,7 @@ This document proposes an enhancement to Serverpod templates to support conditio
 
 Templates currently only support placeholder replacements with a very verbose setup. The templates also contain valid dart files which are statically analyzed.
 
-This design introduces a mustache-based template directives to enable conditional inclusion or removal of directories, files and sections within files for templates.
+This design introduces mustache-based template directives to enable conditional inclusion or removal of directories, files and sections within files for templates.
 
 ## Proposed Solution
 
@@ -72,4 +72,4 @@ For example:
 - `project_name_server_upgrade/{{#docker}}Dockerfile{{!docker}}` is processed as `project_name_server_upgrade/{{#docker}}Dockerfile{{/docker}}`
 - `project_name_server_upgrade/config/{{#docker}}passwords{{!docker}}.yaml` is processed as `project_name_server_upgrade/config/{{#docker}}passwords{{/docker}}.yaml`
 
-After the current Serverpod create command runs, then all server files will be rendered to include or remove the conditional sections based on enabled parameters in the context. When rendering results in an empty directory name, then the directory is deleted along with all the files contained in it. Likewise, when rendering results in a file with empty content, then the file is deleted.
+After the current Serverpod create command runs, then all server files will be rendered to include or remove the conditional sections based on enabled parameters in the context. When rendering produces a directory with an empty name, then the directory is deleted along with all the files contained in it. Likewise, when rendering produces a file with an empty name or empty content, then the file is deleted.
