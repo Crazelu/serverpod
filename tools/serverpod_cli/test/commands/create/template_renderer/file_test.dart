@@ -261,11 +261,52 @@ void main() {
             matches(
               r"import \'dart:io\';\n"
               r'\n'
-              r'void main\(\) \{\n'
-              r'\}\n',
+              r'void main\(\) \{\}\n',
             ),
           );
         },
+      );
+    },
+  );
+
+  test(
+    'Given a dart file with template directives in its content'
+    'when rendering the template, '
+    'then the file is formatted',
+    () async {
+      final file = File(p.join(testDir.path, 'test.dart'));
+      await file.writeAsString('''
+import 'dart:io';
+
+
+// {{#postgres}}
+import 'postgres.dart';
+// {{/postgres}}
+// {{#web}}
+import 'web.dart';
+// {{/web}}
+
+void main() {
+  // {{#postgres}}
+  print('postgres enabled');
+  // {{/postgres}}
+
+
+  // {{#web}}
+  print('web enabled');
+  // {{/web}}
+}
+''');
+
+      await templateRenderer.render(TemplateContext());
+      final content = await file.readAsString();
+      expect(
+        content,
+        matches(
+          r"import \'dart:io\';\n"
+          r'\n'
+          r'void main\(\) \{\}\n',
+        ),
       );
     },
   );
