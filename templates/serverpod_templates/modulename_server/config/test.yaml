@@ -47,7 +47,7 @@ redis:
   port: 9091
   #user: # defaults to empty
   #requireSsl: true # defaults to false
-# {{/database}}
+# {{/redis}}
 
 sessionLogs:
   # {{#database}}
