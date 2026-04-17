@@ -338,10 +338,7 @@ Future<bool> _performUpgrade(
 }
 
 /// Parses and renders the template files in the given directory.
-Future<bool> _renderTemplates(
-  Directory dir,
-  TemplateContext context,
-) async {
+Future<bool> _renderTemplates(Directory dir, TemplateContext context) async {
   return await log.progress('Applying template options', () async {
     await TemplateRenderer(dir: dir).render(context);
     return true;
