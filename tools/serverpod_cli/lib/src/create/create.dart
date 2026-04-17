@@ -166,12 +166,6 @@ Future<bool> performCreate(
     return CommandLineTools.dartPubGet(serverpodDirs.projectDir);
   });
 
-  success &= await log.progress('Formatting server file.', () {
-    return CommandLineTools.dartFormat(
-      File(p.join(serverpodDirs.serverDir.path, 'lib', 'server.dart')),
-    );
-  });
-
   if (template == ServerpodTemplateType.server ||
       template == ServerpodTemplateType.mini) {
     success &= await log.progress(

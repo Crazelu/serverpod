@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 import 'package:serverpod_cli/src/create/template_context.dart';
+import 'package:serverpod_cli/src/util/command_line_tools.dart';
 import 'package:whiskers/whiskers.dart';
 
 /// Responsible for rendering template files in a directory using provided context.
@@ -111,6 +112,10 @@ class TemplateRenderer {
       await file.delete();
     } else if (renderedContent != content) {
       await file.writeAsString(renderedContent);
+
+      // Format rendered dart files
+      final extension = p.extension(p.basename(file.path));
+      if (extension == '.dart') await CommandLineTools.dartFormat(file);
     }
   }
 
