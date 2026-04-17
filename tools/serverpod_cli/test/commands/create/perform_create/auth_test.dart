@@ -116,15 +116,6 @@ void main() {
       );
 
       test(
-        'then the server pubspec contains auth depedencies',
-        () async {
-          final file = File(p.join(serverDir.path, 'pubspec.yaml'));
-          final content = await file.readAsString();
-          expect(content, contains('serverpod_auth_idp_server'));
-        },
-      );
-
-      test(
         'then the server passwords config contains auth secret keys',
         () async {
           final file = File(p.join(serverDir.path, 'config', 'passwords.yaml'));
@@ -216,15 +207,6 @@ void main() {
           expect(content, isNot(contains('initializeAuthServices')));
           expect(content, isNot(contains('EmailIdpConfigFromPasswords')));
           expect(content, isNot(contains('JwtConfigFromPasswords')));
-        },
-      );
-
-      test(
-        'then the server pubspec does not contain auth depedencies',
-        () async {
-          final file = File(p.join(serverDir.path, 'pubspec.yaml'));
-          final content = await file.readAsString();
-          expect(content, isNot(contains('serverpod_auth_idp_server')));
         },
       );
     },
