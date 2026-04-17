@@ -158,7 +158,8 @@ Future<bool> performCreate(
     );
   }
 
-  if (template == ServerpodTemplateType.server) {
+  if (template == ServerpodTemplateType.module ||
+      template == ServerpodTemplateType.server) {
     success &= await _renderTemplates(serverpodDirs.serverDir, context);
   }
 
