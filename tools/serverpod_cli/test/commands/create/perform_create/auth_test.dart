@@ -17,6 +17,10 @@ void main() {
     setupForPerformCreateTest();
   });
 
+  tearDownAll(() {
+    teardownForPerformCreateTest();
+  });
+
   setUp(() async {
     testDir = await Directory.systemTemp.createTemp('perform_create_test');
     serverDir = Directory(
