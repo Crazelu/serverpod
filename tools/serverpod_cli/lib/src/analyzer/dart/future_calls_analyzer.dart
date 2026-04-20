@@ -302,12 +302,14 @@ class FutureCallsAnalyzer {
 
   /// Resolves a single file to a [ResolvedLibraryResult].
   Future<ResolvedLibraryResult?> _resolveLibrary(String filePath) async {
-    for (var context in collection.contexts) {
-      var result = await context.currentSession.getResolvedLibrary(filePath);
-      if (result is ResolvedLibraryResult) {
-        return result;
+    try {
+      for (var context in collection.contexts) {
+        var result = await context.currentSession.getResolvedLibrary(filePath);
+        if (result is ResolvedLibraryResult) {
+          return result;
+        }
       }
-    }
+    } catch (_) {}
     return null;
   }
 
