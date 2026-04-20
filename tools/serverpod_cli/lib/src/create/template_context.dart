@@ -31,7 +31,7 @@ class TemplateContext {
 
   Map<String, bool> toJson() {
     return {
-      'auth': auth & database, // auth requires a database
+      'auth': auth & postgres, // auth requires postgres
       'redis': redis,
       'postgres': postgres,
       'sqlite': sqlite,

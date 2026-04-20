@@ -48,7 +48,7 @@ void main() {
 
   test(
     'Given a TemplateContext, '
-    'when both auth and database values are true, '
+    'when both auth and postgres values are true, '
     'then toJson returns a map with auth set to true',
     () {
       final context = TemplateContext(postgres: true, auth: true);
@@ -58,7 +58,7 @@ void main() {
 
   test(
     'Given a TemplateContext, '
-    'when auth or database value is false, '
+    'when auth or postgres value is false, '
     'then toJson returns a map with auth set to false',
     () {
       var context = TemplateContext(postgres: true, auth: false);
