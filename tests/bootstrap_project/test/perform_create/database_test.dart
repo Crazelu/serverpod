@@ -1,45 +1,38 @@
 import 'dart:io';
 
+import 'package:bootstrap_project/src/util.dart';
 import 'package:path/path.dart' as p;
 import 'package:serverpod_cli/src/create/create.dart';
 import 'package:serverpod_cli/src/create/template_context.dart';
 import 'package:test/test.dart';
+import 'package:uuid/uuid.dart';
 
 import 'util.dart';
 
 void main() {
-  const projectName = 'test_project';
-  late Directory testDir;
-  late Directory currentDir;
-  late Directory serverDir;
+  final rootPath = p.join(Directory.current.path, '..', '..');
+  final cliProjectPath = getServerpodCliProjectPath(rootPath: rootPath);
 
-  setUpAll(() {
-    setupForPerformCreateTest();
-  });
-
-  tearDownAll(() {
-    teardownForPerformCreateTest();
-  });
-
-  setUp(() async {
-    testDir = await Directory.systemTemp.createTemp('perform_create_test');
-    serverDir = Directory(
-      p.join(testDir.path, projectName, '${projectName}_server'),
-    );
-    currentDir = Directory.current;
-    Directory.current = testDir;
-  });
-
-  tearDown(() async {
-    await testDir.delete(recursive: true);
-    Directory.current = currentDir;
+  setUpAll(() async {
+    final pubGetProcess = await startProcess('dart', [
+      'pub',
+      'get',
+    ], workingDirectory: cliProjectPath);
+    assert(await pubGetProcess.exitCode == 0);
   });
 
   group(
     'Given a TemplateContext with postgres enabled and redis disabled, '
     'when performCreate is called with the context and a server template type',
     () {
-      setUp(() async {
+      final projectName =
+          'test_${const Uuid().v4().replaceAll('-', '_').toLowerCase()}';
+      final (:serverDir, :flutterDir, :clientDir) = createProjectFolderPaths(
+        projectName,
+      );
+
+      setUpAll(() async {
+        setupForPerformCreateTest();
         await performCreate(
           projectName,
           ServerpodTemplateType.server,
@@ -49,10 +42,19 @@ void main() {
         );
       });
 
+      tearDownAll(() {
+        final dir = Directory(projectName);
+        try {
+          dir.delete(recursive: true);
+        } on FileSystemException {
+          // Gone.
+        }
+      });
+
       test(
         'then the server Dockerfile file is created',
         () async {
-          final file = File(p.join(serverDir.path, 'Dockerfile'));
+          final file = File(p.join(serverDir, 'Dockerfile'));
           await expectLater(file.exists(), completion(true));
         },
       );
@@ -63,9 +65,7 @@ void main() {
           late File dockerComposeFile;
 
           setUp(() {
-            dockerComposeFile = File(
-              p.join(serverDir.path, 'docker-compose.yaml'),
-            );
+            dockerComposeFile = File(p.join(serverDir, 'docker-compose.yaml'));
           });
 
           test(
@@ -102,9 +102,7 @@ void main() {
           late File config;
 
           setUp(() {
-            config = File(
-              p.join(serverDir.path, 'config', 'passwords.yaml'),
-            );
+            config = File(p.join(serverDir, 'config', 'passwords.yaml'));
           });
 
           test(
@@ -138,7 +136,14 @@ void main() {
     'Given a TemplateContext with redis enabled and postgres disabled, '
     'when performCreate is called with the context and a server template type',
     () {
-      setUp(() async {
+      final projectName =
+          'test_${const Uuid().v4().replaceAll('-', '_').toLowerCase()}';
+      final (:serverDir, :flutterDir, :clientDir) = createProjectFolderPaths(
+        projectName,
+      );
+
+      setUpAll(() async {
+        setupForPerformCreateTest();
         await performCreate(
           projectName,
           ServerpodTemplateType.server,
@@ -148,10 +153,19 @@ void main() {
         );
       });
 
+      tearDownAll(() {
+        final dir = Directory(projectName);
+        try {
+          dir.delete(recursive: true);
+        } on FileSystemException {
+          // Gone.
+        }
+      });
+
       test(
         'then the server Dockerfile file is created',
         () async {
-          final file = File(p.join(serverDir.path, 'Dockerfile'));
+          final file = File(p.join(serverDir, 'Dockerfile'));
           await expectLater(file.exists(), completion(true));
         },
       );
@@ -162,9 +176,7 @@ void main() {
           late File dockerComposeFile;
 
           setUp(() {
-            dockerComposeFile = File(
-              p.join(serverDir.path, 'docker-compose.yaml'),
-            );
+            dockerComposeFile = File(p.join(serverDir, 'docker-compose.yaml'));
           });
 
           test(
@@ -201,9 +213,7 @@ void main() {
           late File config;
 
           setUp(() {
-            config = File(
-              p.join(serverDir.path, 'config', 'passwords.yaml'),
-            );
+            config = File(p.join(serverDir, 'config', 'passwords.yaml'));
           });
 
           test(
@@ -237,7 +247,14 @@ void main() {
     'Given a TemplateContext with redis disabled and no database option enabled, '
     'when performCreate is called with the context and a server template type',
     () {
-      setUp(() async {
+      final projectName =
+          'test_${const Uuid().v4().replaceAll('-', '_').toLowerCase()}';
+      final (:serverDir, :flutterDir, :clientDir) = createProjectFolderPaths(
+        projectName,
+      );
+
+      setUpAll(() async {
+        setupForPerformCreateTest();
         final context = TemplateContext(
           postgres: false,
           redis: false,
@@ -253,10 +270,19 @@ void main() {
         );
       });
 
+      tearDownAll(() {
+        final dir = Directory(projectName);
+        try {
+          dir.delete(recursive: true);
+        } on FileSystemException {
+          // Gone.
+        }
+      });
+
       test(
         'then the server Dockerfile file is not created',
         () async {
-          final file = File(p.join(serverDir.path, 'Dockerfile'));
+          final file = File(p.join(serverDir, 'Dockerfile'));
           await expectLater(file.exists(), completion(false));
         },
       );
@@ -264,7 +290,7 @@ void main() {
       test(
         'then the server docker-compose file is not created',
         () async {
-          final file = File(p.join(serverDir.path, 'docker-compose.yaml'));
+          final file = File(p.join(serverDir, 'docker-compose.yaml'));
           await expectLater(file.exists(), completion(false));
         },
       );
@@ -274,7 +300,7 @@ void main() {
         () async {
           final file = File(
             p.join(
-              serverDir.path,
+              serverDir,
               'config'
               'passwords.yaml',
             ),
@@ -287,7 +313,7 @@ void main() {
         'then the server config for development does not contain database configurations',
         () async {
           final config = File(
-            p.join(serverDir.path, 'config', 'development.yaml'),
+            p.join(serverDir, 'config', 'development.yaml'),
           );
           final content = await config.readAsString();
           expect(content, isNot(contains('database:')));
@@ -298,7 +324,7 @@ void main() {
         'then the server config for staging does not contain database configurations',
         () async {
           final config = File(
-            p.join(serverDir.path, 'config', 'staging.yaml'),
+            p.join(serverDir, 'config', 'staging.yaml'),
           );
           final content = await config.readAsString();
           expect(content, isNot(contains('database:')));
@@ -309,7 +335,7 @@ void main() {
         'then the server config for production does not contain database configurations',
         () async {
           final config = File(
-            p.join(serverDir.path, 'config', 'production.yaml'),
+            p.join(serverDir, 'config', 'production.yaml'),
           );
           final content = await config.readAsString();
           expect(content, isNot(contains('database:')));
@@ -320,7 +346,7 @@ void main() {
         'then the server config for test does not contain database configurations',
         () async {
           final config = File(
-            p.join(serverDir.path, 'config', 'test.yaml'),
+            p.join(serverDir, 'config', 'test.yaml'),
           );
           final content = await config.readAsString();
           expect(content, isNot(contains('database:')));
@@ -333,7 +359,14 @@ void main() {
     'Given a TemplateContext with postgres enabled and redis disabled, '
     'when performCreate is called with the context and a module template type',
     () {
-      setUp(() async {
+      final projectName =
+          'test_${const Uuid().v4().replaceAll('-', '_').toLowerCase()}';
+      final (:serverDir, :flutterDir, :clientDir) = createProjectFolderPaths(
+        projectName,
+      );
+
+      setUpAll(() async {
+        setupForPerformCreateTest();
         await performCreate(
           projectName,
           ServerpodTemplateType.module,
@@ -343,6 +376,15 @@ void main() {
         );
       });
 
+      tearDownAll(() {
+        final dir = Directory(projectName);
+        try {
+          dir.delete(recursive: true);
+        } on FileSystemException {
+          // Gone.
+        }
+      });
+
       group(
         'then the server docker-compose file',
         () {
@@ -350,7 +392,7 @@ void main() {
 
           setUp(() {
             dockerComposeFile = File(
-              p.join(serverDir.path, 'docker-compose.yaml'),
+              p.join(serverDir, 'docker-compose.yaml'),
             );
           });
 
@@ -387,7 +429,7 @@ void main() {
 
           setUp(() {
             config = File(
-              p.join(serverDir.path, 'config', 'passwords.yaml'),
+              p.join(serverDir, 'config', 'passwords.yaml'),
             );
           });
 
@@ -422,7 +464,7 @@ void main() {
           late File config;
 
           setUp(() {
-            config = File(p.join(serverDir.path, 'config', 'test.yaml'));
+            config = File(p.join(serverDir, 'config', 'test.yaml'));
           });
 
           test(
@@ -457,7 +499,14 @@ void main() {
     'Given a TemplateContext with redis enabled and postgres disabled, '
     'when performCreate is called with the context and a module template type',
     () {
-      setUp(() async {
+      final projectName =
+          'test_${const Uuid().v4().replaceAll('-', '_').toLowerCase()}';
+      final (:serverDir, :flutterDir, :clientDir) = createProjectFolderPaths(
+        projectName,
+      );
+
+      setUpAll(() async {
+        setupForPerformCreateTest();
         await performCreate(
           projectName,
           ServerpodTemplateType.module,
@@ -467,6 +516,15 @@ void main() {
         );
       });
 
+      tearDownAll(() {
+        final dir = Directory(projectName);
+        try {
+          dir.delete(recursive: true);
+        } on FileSystemException {
+          // Gone.
+        }
+      });
+
       group(
         'then the server docker-compose file',
         () {
@@ -474,7 +532,7 @@ void main() {
 
           setUp(() {
             dockerComposeFile = File(
-              p.join(serverDir.path, 'docker-compose.yaml'),
+              p.join(serverDir, 'docker-compose.yaml'),
             );
           });
 
@@ -511,7 +569,7 @@ void main() {
 
           setUp(() {
             config = File(
-              p.join(serverDir.path, 'config', 'passwords.yaml'),
+              p.join(serverDir, 'config', 'passwords.yaml'),
             );
           });
 
@@ -543,7 +601,7 @@ void main() {
       test(
         'then the server config for test contains redis configurations',
         () async {
-          final file = File(p.join(serverDir.path, 'config', 'test.yaml'));
+          final file = File(p.join(serverDir, 'config', 'test.yaml'));
           final content = await file.readAsString();
           expect(content, contains('redis:'));
         },
@@ -555,7 +613,14 @@ void main() {
     'Given a TemplateContext with redis disabled and no database option enabled, '
     'when performCreate is called with the context and a module template type',
     () {
-      setUp(() async {
+      final projectName =
+          'test_${const Uuid().v4().replaceAll('-', '_').toLowerCase()}';
+      final (:serverDir, :flutterDir, :clientDir) = createProjectFolderPaths(
+        projectName,
+      );
+
+      setUpAll(() async {
+        setupForPerformCreateTest();
         final context = TemplateContext(
           postgres: false,
           redis: false,
@@ -571,10 +636,19 @@ void main() {
         );
       });
 
+      tearDownAll(() {
+        final dir = Directory(projectName);
+        try {
+          dir.delete(recursive: true);
+        } on FileSystemException {
+          // Gone.
+        }
+      });
+
       test(
         'then the server docker-compose file is not created',
         () async {
-          final file = File(p.join(serverDir.path, 'docker-compose.yaml'));
+          final file = File(p.join(serverDir, 'docker-compose.yaml'));
           await expectLater(file.exists(), completion(false));
         },
       );
@@ -584,7 +658,7 @@ void main() {
         () async {
           final file = File(
             p.join(
-              serverDir.path,
+              serverDir,
               'config'
               'passwords.yaml',
             ),
@@ -599,7 +673,7 @@ void main() {
           late File config;
 
           setUp(() {
-            config = File(p.join(serverDir.path, 'config', 'test.yaml'));
+            config = File(p.join(serverDir, 'config', 'test.yaml'));
           });
 
           test(

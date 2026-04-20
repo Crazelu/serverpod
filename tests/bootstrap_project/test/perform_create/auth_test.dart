@@ -1,38 +1,24 @@
 import 'dart:io';
 
+import 'package:bootstrap_project/src/util.dart';
 import 'package:path/path.dart' as p;
 import 'package:serverpod_cli/src/create/create.dart';
 import 'package:serverpod_cli/src/create/template_context.dart';
 import 'package:test/test.dart';
+import 'package:uuid/uuid.dart';
 
 import 'util.dart';
 
 void main() {
-  const projectName = 'test_project';
-  late Directory testDir;
-  late Directory currentDir;
-  late Directory serverDir;
+  final rootPath = p.join(Directory.current.path, '..', '..');
+  final cliProjectPath = getServerpodCliProjectPath(rootPath: rootPath);
 
-  setUpAll(() {
-    setupForPerformCreateTest();
-  });
-
-  tearDownAll(() {
-    teardownForPerformCreateTest();
-  });
-
-  setUp(() async {
-    testDir = await Directory.systemTemp.createTemp('perform_create_test');
-    serverDir = Directory(
-      p.join(testDir.path, projectName, '${projectName}_server'),
-    );
-    currentDir = Directory.current;
-    Directory.current = testDir;
-  });
-
-  tearDown(() async {
-    await testDir.delete(recursive: true);
-    Directory.current = currentDir;
+  setUpAll(() async {
+    final pubGetProcess = await startProcess('dart', [
+      'pub',
+      'get',
+    ], workingDirectory: cliProjectPath);
+    assert(await pubGetProcess.exitCode == 0);
   });
 
   group(
@@ -41,7 +27,15 @@ void main() {
     () {
       late File serverFile;
 
-      setUp(() async {
+      final projectName =
+          'test_${const Uuid().v4().replaceAll('-', '_').toLowerCase()}';
+      final (:serverDir, :flutterDir, :clientDir) = createProjectFolderPaths(
+        projectName,
+      );
+
+      setUpAll(() async {
+        setupForPerformCreateTest();
+
         final context = TemplateContext(auth: true, postgres: true);
 
         await performCreate(
@@ -52,14 +46,26 @@ void main() {
           context: context,
         );
 
-        serverFile = File(p.join(serverDir.path, 'lib', 'server.dart'));
+        serverFile = File(
+          p.join(serverDir, 'lib', 'server.dart'),
+        );
       });
+
+      tearDownAll(() {
+        final dir = Directory(projectName);
+        try {
+          dir.delete(recursive: true);
+        } on FileSystemException {
+          // Gone.
+        }
+      });
+
       test(
         'then the email idp endpoint file is created',
         () async {
           final file = File(
             p.join(
-              serverDir.path,
+              serverDir,
               'lib',
               'src',
               'auth',
@@ -76,7 +82,7 @@ void main() {
         () async {
           final file = File(
             p.join(
-              serverDir.path,
+              serverDir,
               'lib',
               'src',
               'auth',
@@ -118,7 +124,9 @@ void main() {
       test(
         'then the server passwords config contains auth secret keys',
         () async {
-          final file = File(p.join(serverDir.path, 'config', 'passwords.yaml'));
+          final file = File(
+            p.join(serverDir, 'config', 'passwords.yaml'),
+          );
           final content = await file.readAsString();
           expect(content, contains('emailSecretHashPepper:'));
           expect(content, contains('jwtHmacSha512PrivateKey:'));
@@ -134,23 +142,41 @@ void main() {
     () {
       late File serverFile;
 
-      setUp(() async {
+      final projectName =
+          'test_${const Uuid().v4().replaceAll('-', '_').toLowerCase()}';
+      final (:serverDir, :flutterDir, :clientDir) = createProjectFolderPaths(
+        projectName,
+      );
+
+      setUpAll(() async {
+        setupForPerformCreateTest();
+
         await performCreate(
           projectName,
           ServerpodTemplateType.server,
-          false,
+          true,
           interactive: false,
           context: TemplateContext(auth: false),
         );
 
-        serverFile = File(p.join(serverDir.path, 'lib', 'server.dart'));
+        serverFile = File(p.join(serverDir, 'lib', 'server.dart'));
       });
+
+      tearDownAll(() {
+        final dir = Directory(projectName);
+        try {
+          dir.delete(recursive: true);
+        } on FileSystemException {
+          // Gone.
+        }
+      });
+
       test(
         'then the email idp endpoint file is not created',
         () async {
           final file = File(
             p.join(
-              serverDir.path,
+              serverDir,
               'lib',
               'src',
               'auth',
@@ -167,7 +193,7 @@ void main() {
         () async {
           final file = File(
             p.join(
-              serverDir.path,
+              serverDir,
               'lib',
               'src',
               'auth',
@@ -212,26 +238,48 @@ void main() {
     },
   );
 
-  test(
+  group(
     'Given a TemplateContext with auth disabled and a database option enabled, '
-    'when performCreate is called with the context and a server template type, '
-    'then the server passwords config does not contain auth secret keys',
-    () async {
-      final context = TemplateContext(auth: false, postgres: true);
-
-      await performCreate(
+    'when performCreate is called with the context and a server template type',
+    () {
+      final projectName =
+          'test_${const Uuid().v4().replaceAll('-', '_').toLowerCase()}';
+      final (:serverDir, :flutterDir, :clientDir) = createProjectFolderPaths(
         projectName,
-        ServerpodTemplateType.server,
-        false,
-        interactive: false,
-        context: context,
       );
 
-      final file = File(p.join(serverDir.path, 'config', 'passwords.yaml'));
-      final content = await file.readAsString();
-      expect(content, isNot(contains('emailSecretHashPepper:')));
-      expect(content, isNot(contains('jwtHmacSha512PrivateKey:')));
-      expect(content, isNot(contains('jwtRefreshTokenHashPepper:')));
+      setUpAll(() async {
+        setupForPerformCreateTest();
+        final context = TemplateContext(auth: false, postgres: true);
+
+        await performCreate(
+          projectName,
+          ServerpodTemplateType.server,
+          true,
+          interactive: false,
+          context: context,
+        );
+      });
+
+      tearDownAll(() {
+        final dir = Directory(projectName);
+        try {
+          dir.delete(recursive: true);
+        } on FileSystemException {
+          // Gone.
+        }
+      });
+
+      test(
+        'then the server passwords config does not contain auth secret keys',
+        () async {
+          final file = File(p.join(serverDir, 'config', 'passwords.yaml'));
+          final content = await file.readAsString();
+          expect(content, isNot(contains('emailSecretHashPepper:')));
+          expect(content, isNot(contains('jwtHmacSha512PrivateKey:')));
+          expect(content, isNot(contains('jwtRefreshTokenHashPepper:')));
+        },
+      );
     },
   );
 }
