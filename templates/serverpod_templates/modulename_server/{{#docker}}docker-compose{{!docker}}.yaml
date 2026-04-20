@@ -22,6 +22,7 @@ services:
       - REDIS_REPLICATION_MODE=master
   # {{/redis}}
 # {{#postgres}}
+
 volumes:
   modulename_test_data:
 # {{/postgres}}

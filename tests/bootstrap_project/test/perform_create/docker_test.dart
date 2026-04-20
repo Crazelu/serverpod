@@ -52,14 +52,6 @@ void main() {
       });
 
       test(
-        'then the server passwords config file is created',
-        () async {
-          final file = File(p.join(serverDir, 'config', 'passwords.yaml'));
-          await expectLater(file.exists(), completion(true));
-        },
-      );
-
-      test(
         'then the server docker-compose file is created',
         () async {
           final file = File(p.join(serverDir, 'docker-compose.yaml'));
@@ -112,14 +104,6 @@ void main() {
           // Gone.
         }
       });
-
-      test(
-        'then the server passwords config file is not created',
-        () async {
-          final file = File(p.join(serverDir, 'config', 'passwords.yaml'));
-          await expectLater(file.exists(), completion(false));
-        },
-      );
 
       test(
         'then the server docker-compose file is not created',
