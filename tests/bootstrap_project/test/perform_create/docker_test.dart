@@ -23,7 +23,7 @@ void main() {
 
   group(
     'Given a TemplateContext with neither redis nor any database option enabled, '
-    'when performCreate is called with the context and a server template type, ',
+    'when performCreate is called with the context and a server template type',
     () {
       final projectName =
           'test_${const Uuid().v4().replaceAll('-', '_').toLowerCase()}';
@@ -77,7 +77,7 @@ void main() {
 
   group(
     'Given a TemplateContext with neither redis nor any database option enabled, '
-    'when performCreate is called with the context and a module template type, ',
+    'when performCreate is called with the context and a module template type',
     () {
       final projectName =
           'test_${const Uuid().v4().replaceAll('-', '_').toLowerCase()}';
