@@ -33,10 +33,12 @@ webServer:
 # {{#database}}
 # This is the database setup for your test server.
 database:
+  # {{#postgres}}
   host: localhost
   port: 9090
   name: modulename_test
   user: postgres
+  # {{/postgres}}
 # {{/database}}
 
 # {{#redis}}

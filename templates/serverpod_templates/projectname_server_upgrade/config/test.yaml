@@ -33,10 +33,12 @@ webServer:
 # {{#database}}
 # This is the database setup for your test server.
 database:
+  # {{#postgres}}
   host: localhost
   port: 9090
   name: projectname_test
   user: postgres
+  # {{/postgres}}
   #maxConnectionCount: 10 # Defaults to 10, a negative or null value removes the limit
 # {{/database}}
 

@@ -32,12 +32,14 @@ webServer:
 # {{#database}}
 # This is the database setup for your server.
 database:
+  # {{#postgres}}
   host: localhost
   port: 8090
   name: projectname
   user: postgres
   #requireSsl: true # defaults to false
   #isUnixSocket: true # defaults to false
+  # {{/postgres}}
   #maxConnectionCount: 10 # Defaults to 10, a negative or null value removes the limit
 # {{/database}}
 
