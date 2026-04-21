@@ -124,7 +124,7 @@ void main() {
         () async {
           final file = File(p.join(serverDir, 'config', 'test.yaml'));
           final content = await file.readAsString();
-          expect(content, isNot(contains('filePath: ${projectName}_test.db')));
+          expect(content, isNot(contains('filePath:')));
         },
       );
 
@@ -133,7 +133,7 @@ void main() {
         () async {
           final file = File(p.join(serverDir, 'config', 'development.yaml'));
           final content = await file.readAsString();
-          expect(content, isNot(contains('filePath: ${projectName}_dev.db')));
+          expect(content, isNot(contains('filePath:')));
         },
       );
 
@@ -142,10 +142,7 @@ void main() {
         () async {
           final file = File(p.join(serverDir, 'config', 'staging.yaml'));
           final content = await file.readAsString();
-          expect(
-            content,
-            isNot(contains('filePath: ${projectName}_staging.db')),
-          );
+          expect(content, isNot(contains('filePath:')));
         },
       );
 
@@ -154,7 +151,7 @@ void main() {
         () async {
           final file = File(p.join(serverDir, 'config', 'production.yaml'));
           final content = await file.readAsString();
-          expect(content, isNot(contains('filePath: ${projectName}_prod.db')));
+          expect(content, isNot(contains('filePath:')));
         },
       );
     },
@@ -236,7 +233,7 @@ void main() {
         () async {
           final file = File(p.join(serverDir, 'config', 'test.yaml'));
           final content = await file.readAsString();
-          expect(content, isNot(contains('filePath: ${projectName}_test.db')));
+          expect(content, isNot(contains('filePath:')));
         },
       );
     },
