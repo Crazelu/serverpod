@@ -39,6 +39,9 @@ database:
   name: modulename_test
   user: postgres
   # {{/postgres}}
+  # {{#sqlite}}
+  filePath: modulename_test.db
+  # {{/sqlite}}
 # {{/database}}
 
 # {{#redis}}

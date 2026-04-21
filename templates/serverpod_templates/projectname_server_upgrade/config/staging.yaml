@@ -45,6 +45,9 @@ database:
   requireSsl: true
   #isUnixSocket: true # defaults to false
   # {{/postgres}}
+  # {{#sqlite}}
+  filePath: projectname_staging.db
+  # {{/sqlite}}
   #maxConnectionCount: 10 # Defaults to 10, a negative or null value removes the limit
 # {{/database}}
 
