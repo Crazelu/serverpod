@@ -22,9 +22,11 @@
                 "SERVERPOD_PASSWORD_database": "DB_PASSWORD"
             },
             // {{/postgres}}
+            // {{#database}}
             "args": [
                 "--apply-migrations"
             ]
+            // {{/database}}
         }
     ],
     "compounds": [
