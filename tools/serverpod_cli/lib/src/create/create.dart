@@ -163,6 +163,10 @@ Future<bool> performCreate(
     success &= await _renderTemplates(serverpodDirs.serverDir, context);
   }
 
+  if (template == ServerpodTemplateType.server) {
+    success &= await _renderTemplates(serverpodDirs.vscodeDir, context);
+  }
+
   success &= await log.progress('Getting workspace dependencies.', () {
     return CommandLineTools.dartPubGet(serverpodDirs.projectDir);
   });
@@ -310,6 +314,7 @@ Future<bool> _performUpgrade(
   );
 
   success &= await _renderTemplates(serverpodDir.serverDir, context);
+  success &= await _renderTemplates(serverpodDir.vscodeDir, context);
 
   success &= await _runGenerate(
     serverpodDir.serverDir,
