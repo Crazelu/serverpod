@@ -72,6 +72,7 @@ class QuickstartCommand extends ServerpodCommand<QuickstartOption> {
   @override
   final description =
       'Creates a new Serverpod project with basic options.\n'
+      'Suitable for a simple project or quick experiment.\n'
       'Specify project name (must be lowercase with no special characters).';
 
   QuickstartCommand() : super(options: QuickstartOption.values);
