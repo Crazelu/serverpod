@@ -91,7 +91,7 @@ void main() {
             );
           });
 
-          test('has an module_endpoint file', () {
+          test('has a module_endpoint file', () {
             expect(
               File(
                 path.join(
