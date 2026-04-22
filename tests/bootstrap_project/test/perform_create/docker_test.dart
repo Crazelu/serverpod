@@ -22,7 +22,7 @@ void main() {
   });
 
   group(
-    'Given a TemplateContext with neither redis nor any database option enabled, '
+    'Given a TemplateContext with postgres and redis disabled, '
     'when performCreate is called with the context and a server template type',
     () {
       final projectName =
@@ -33,11 +33,7 @@ void main() {
 
       setUpAll(() async {
         setupForPerformCreateTest();
-        final context = TemplateContext(
-          redis: false,
-          sqlite: false,
-          postgres: false,
-        );
+        final context = TemplateContext(redis: false, postgres: false);
 
         await performCreate(
           projectName,
@@ -96,7 +92,7 @@ void main() {
   );
 
   group(
-    'Given a TemplateContext with neither redis nor any database option enabled, '
+    'Given a TemplateContext with postgres and redis disabled, '
     'when performCreate is called with the context and a module template type',
     () {
       final projectName =
@@ -107,11 +103,7 @@ void main() {
 
       setUpAll(() async {
         setupForPerformCreateTest();
-        final context = TemplateContext(
-          redis: false,
-          sqlite: false,
-          postgres: false,
-        );
+        final context = TemplateContext(redis: false, postgres: false);
 
         await performCreate(
           projectName,
