@@ -17,7 +17,11 @@ class TemplateRenderer {
 
   /// Renders the templates in the target directory using [context].
   Future<void> render(TemplateContext context) async {
-    await _renderDirectory(dir, context);
+    try {
+      await _renderDirectory(dir, context);
+    } on FileSystemException {
+      // Directory gone.
+    }
   }
 
   /// Recursively renders all files and directories within the specified directory.
