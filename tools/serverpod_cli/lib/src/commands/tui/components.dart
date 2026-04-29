@@ -40,15 +40,15 @@ class Button extends StatelessComponent {
     super.key,
     required this.name,
     required this.activationChar,
-    required this.activationKey,
+    required this.activationKeys,
     required this.onActivate,
     this.enabled = true,
-  });
+  }) : assert(activationKeys == const [], 'activationKeys can not be empty');
 
   final String name;
   final String activationChar;
-  final LogicalKey activationKey;
-  final VoidCallback onActivate;
+  final List<LogicalKey> activationKeys;
+  final void Function(LogicalKey) onActivate;
   final bool enabled;
 
   @override
@@ -58,8 +58,8 @@ class Button extends StatelessComponent {
     return Focusable(
       focused: enabled,
       onKeyEvent: (event) {
-        if (event.logicalKey == activationKey) {
-          onActivate();
+        if (activationKeys.contains(event.logicalKey)) {
+          onActivate(event.logicalKey);
           return true;
         }
         return false;
