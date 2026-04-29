@@ -2,7 +2,6 @@ import 'package:nocterm/nocterm.dart';
 import 'package:serverpod_cli/src/commands/create/tui/main_screen.dart';
 import 'package:serverpod_cli/src/commands/create/tui/state_holder.dart';
 import 'package:serverpod_cli/src/commands/tui/app.dart';
-import 'package:serverpod_cli/src/commands/tui/spinner.dart';
 
 /// Root TUI component for `serverpod create`
 class ServerpodCreateApp extends ServerpodApp<CreateAppStateHolder> {
@@ -32,25 +31,22 @@ class ServerpodCreateAppState extends ServerpodAppState<ServerpodCreateApp> {
   }
 
   @override
-  Component build(BuildContext context) {
+  Component buildApp(BuildContext context) {
     final state = component.holder.state;
 
-    return SpinnerScope(
-      active: state.activeOperations.isNotEmpty,
-      child: Focusable(
-        focused: true,
-        onKeyEvent: _handleKeyEvent,
-        child: MainScreen(
-          holder: component.holder,
-          logScrollController: _logScrollController,
-          scrollController: _scrollController,
-          onCreate: component.onCreate,
-          onQuit: component.onQuit,
-          onToggleHelp: () {
-            state.showHelp = !state.showHelp;
-            rebuild();
-          },
-        ),
+    return Focusable(
+      focused: true,
+      onKeyEvent: _handleKeyEvent,
+      child: MainScreen(
+        holder: component.holder,
+        logScrollController: _logScrollController,
+        scrollController: _scrollController,
+        onCreate: component.onCreate,
+        onQuit: component.onQuit,
+        onToggleHelp: () {
+          state.showHelp = !state.showHelp;
+          rebuild();
+        },
       ),
     );
   }

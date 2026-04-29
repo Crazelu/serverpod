@@ -640,24 +640,7 @@ Future<int> _runWithTui({
   }
 
   // Block on the TUI.
-  await runApp(
-    NoctermApp(
-      child: Builder(
-        builder: (context) {
-          var themeData = TuiTheme.of(context);
-          return TuiTheme(
-            data: themeData.copyWith(
-              background: Color.defaultColor,
-            ),
-            child: ServerpodWatchApp(
-              holder: holder,
-              onReady: onReady,
-            ),
-          );
-        },
-      ),
-    ),
-  );
+  await runApp(ServerpodWatchApp(holder: holder, onReady: onReady));
 
   return exitCode;
 }

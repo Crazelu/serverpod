@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:nocterm/nocterm.dart';
 import 'package:serverpod_cli/src/commands/tui/app.dart';
 import 'package:serverpod_cli/src/commands/tui/app_state_holder.dart';
-import 'package:serverpod_cli/src/commands/tui/spinner.dart';
 
 import 'main_screen.dart';
 
@@ -135,32 +134,29 @@ class ServerpodWatchAppState extends ServerpodAppState<ServerpodWatchApp> {
   }
 
   @override
-  Component build(BuildContext context) {
+  Component buildApp(BuildContext context) {
     final state = component.holder.state;
 
-    return SpinnerScope(
-      active: state.activeOperations.isNotEmpty,
-      child: Focusable(
-        focused: true,
-        onKeyEvent: _handleKeyEvent,
-        child: MainScreen(
-          state: state,
-          showSplash: state.showSplash,
-          logScrollController: logScrollController,
-          rawScrollController: rawScrollController,
-          onToggleHelp: () {
-            state.showHelp = !state.showHelp;
-            _rebuild();
-          },
-          onTabChanged: (index) {
-            state.selectedTab = index;
-            _rebuild();
-          },
-          onHotReload: onHotReload,
-          onCreateMigration: onCreateMigration,
-          onApplyMigration: onApplyMigration,
-          onQuit: onQuit,
-        ),
+    return Focusable(
+      focused: true,
+      onKeyEvent: _handleKeyEvent,
+      child: MainScreen(
+        state: state,
+        showSplash: state.showSplash,
+        logScrollController: logScrollController,
+        rawScrollController: rawScrollController,
+        onToggleHelp: () {
+          state.showHelp = !state.showHelp;
+          _rebuild();
+        },
+        onTabChanged: (index) {
+          state.selectedTab = index;
+          _rebuild();
+        },
+        onHotReload: onHotReload,
+        onCreateMigration: onCreateMigration,
+        onApplyMigration: onApplyMigration,
+        onQuit: onQuit,
       ),
     );
   }

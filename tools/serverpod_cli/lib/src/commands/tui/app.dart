@@ -1,5 +1,7 @@
+import 'package:meta/meta.dart';
 import 'package:nocterm/nocterm.dart';
 import 'package:serverpod_cli/src/commands/tui/app_state_holder.dart';
+import 'package:serverpod_cli/src/commands/tui/spinner.dart';
 
 abstract class ServerpodApp<T extends ServerpodAppStateHolder>
     extends StatefulComponent {
@@ -33,4 +35,29 @@ abstract class ServerpodAppState<S extends ServerpodApp> extends State<S> {
   void rebuild() {
     setState(() {});
   }
+
+  @override
+  @protected
+  Component build(BuildContext context) {
+    final state = component.holder.state;
+
+    return NoctermApp(
+      child: Builder(
+        builder: (context) {
+          final themeData = TuiTheme.of(context);
+          return TuiTheme(
+            data: themeData.copyWith(
+              background: Color.defaultColor,
+            ),
+            child: SpinnerScope(
+              active: state.activeOperations.isNotEmpty,
+              child: buildApp(context),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Component buildApp(BuildContext context);
 }

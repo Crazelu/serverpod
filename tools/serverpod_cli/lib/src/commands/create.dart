@@ -226,39 +226,27 @@ class CreateCommand extends ServerpodCommand<CreateOption> {
           serverPath: serverPath,
         ),
       ),
-      NoctermApp(
-        child: Builder(
-          builder: (context) {
-            var themeData = TuiTheme.of(context);
-            return TuiTheme(
-              data: themeData.copyWith(
-                background: Color.defaultColor,
-              ),
-              child: ServerpodCreateApp(
-                holder: holder,
-                onCreate: () async {
-                  final context = state.toTemplateContext();
-                  final (
-                    :success,
-                    :relativeServerPath,
-                  ) = await performCreateWithResult(
-                    name,
-                    template,
-                    force,
-                    interactive: interactive,
-                    context: context,
-                  );
+      ServerpodCreateApp(
+        holder: holder,
+        onCreate: () async {
+          final context = state.toTemplateContext();
+          final (
+            :success,
+            :relativeServerPath,
+          ) = await performCreateWithResult(
+            name,
+            template,
+            force,
+            interactive: interactive,
+            context: context,
+          );
 
-                  projectCreated = success;
-                  serverPath = relativeServerPath;
+          projectCreated = success;
+          serverPath = relativeServerPath;
 
-                  await _shutdownNocterm(success ? 0 : 1);
-                },
-                onQuit: () => _shutdownNocterm(1),
-              ),
-            );
-          },
-        ),
+          await _shutdownNocterm(success ? 0 : 1);
+        },
+        onQuit: () => _shutdownNocterm(1),
       ),
     );
   }
