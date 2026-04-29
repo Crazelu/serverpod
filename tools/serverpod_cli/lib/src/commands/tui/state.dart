@@ -102,4 +102,10 @@ abstract class ServerpodState {
 
   /// Currently active tracked operations (keyed by ID).
   Map<String, TrackedOperation> get activeOperations;
+
+  /// Whether the help overlay is visible.
+  bool showHelp = false;
+
+  /// Whether completed operations are expanded to show sub-entries.
+  bool expandOperations = false;
 }

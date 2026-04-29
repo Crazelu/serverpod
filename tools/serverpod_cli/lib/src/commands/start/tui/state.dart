@@ -2,7 +2,7 @@ import 'package:serverpod_cli/src/commands/tui/bounded_queue_list.dart';
 import 'package:serverpod_cli/src/commands/tui/state.dart';
 
 /// Central state for the TUI, mutated by the backend and rendered by nocterm.
-class ServerWatchState implements ServerpodState {
+class ServerWatchState extends ServerpodState {
   ServerWatchState();
 
   /// Structured log entries for the "Log Messages" tab.
@@ -29,12 +29,6 @@ class ServerWatchState implements ServerpodState {
   /// Whether to show the splash overlay. Starts true, set to false
   /// after 5 seconds or explicitly by the backend.
   bool showSplash = true;
-
-  /// Whether the help overlay is visible.
-  bool showHelp = false;
-
-  /// Whether completed operations are expanded to show sub-entries.
-  bool expandOperations = false;
 
   /// Maximum number of log entries to keep.
   static const maxLogEntries = 10000;
