@@ -182,7 +182,7 @@ class MainScreen extends StatelessComponent {
     return Row(
       children: [
         Button(
-          name: 'Create',
+          name: 'Create Project',
           activationChar: 'Enter',
           enabled: !creatingProject,
           activationKeys: const [LogicalKey.enter],

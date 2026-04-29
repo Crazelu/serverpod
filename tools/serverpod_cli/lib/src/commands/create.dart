@@ -1,6 +1,6 @@
 import 'package:cli_tools/cli_tools.dart';
 import 'package:config/config.dart';
-import 'package:nocterm/nocterm.dart' as nocterm;
+import 'package:nocterm/nocterm.dart';
 import 'package:serverpod_cli/src/commands/create/tui/app.dart';
 import 'package:serverpod_cli/src/commands/create/tui/state.dart';
 import 'package:serverpod_cli/src/commands/create/tui/state_holder.dart';
@@ -174,7 +174,7 @@ class CreateCommand extends ServerpodCommand<CreateOption> {
   Future<void> _shutdownNocterm([int exitCode = 0]) async {
     await closeLogger();
     initializeLogger();
-    nocterm.shutdownApp(exitCode);
+    shutdownApp(exitCode);
   }
 
   /// Flushes success logs if [projectCreated] is true.
@@ -218,7 +218,7 @@ class CreateCommand extends ServerpodCommand<CreateOption> {
     bool projectCreated = false;
     String serverPath = name;
 
-    await nocterm.runApp(
+    await runApp(
       backend: ServerpodTerminalBackend(
         preExit: () => _preExit(
           template: template,
@@ -226,31 +226,38 @@ class CreateCommand extends ServerpodCommand<CreateOption> {
           serverPath: serverPath,
         ),
       ),
-      nocterm.NoctermApp(
-        theme: nocterm.TuiThemeData.dark.copyWith(
-          background: nocterm.Color.defaultColor,
-        ),
-        child: ServerpodCreateApp(
-          holder: holder,
-          onCreate: () async {
-            final context = state.toTemplateContext();
-            final (
-              :success,
-              :relativeServerPath,
-            ) = await performCreateWithResult(
-              name,
-              template,
-              force,
-              interactive: interactive,
-              context: context,
+      NoctermApp(
+        child: Builder(
+          builder: (context) {
+            var themeData = TuiTheme.of(context);
+            return TuiTheme(
+              data: themeData.copyWith(
+                background: Color.defaultColor,
+              ),
+              child: ServerpodCreateApp(
+                holder: holder,
+                onCreate: () async {
+                  final context = state.toTemplateContext();
+                  final (
+                    :success,
+                    :relativeServerPath,
+                  ) = await performCreateWithResult(
+                    name,
+                    template,
+                    force,
+                    interactive: interactive,
+                    context: context,
+                  );
+
+                  projectCreated = success;
+                  serverPath = relativeServerPath;
+
+                  await _shutdownNocterm(success ? 0 : 1);
+                },
+                onQuit: () => _shutdownNocterm(1),
+              ),
             );
-
-            projectCreated = success;
-            serverPath = relativeServerPath;
-
-            await _shutdownNocterm(success ? 0 : 1);
           },
-          onQuit: () => _shutdownNocterm(1),
         ),
       ),
     );

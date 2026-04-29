@@ -5,7 +5,9 @@ import 'package:serverpod_cli/src/commands/tui/app_state_holder.dart';
 
 /// State holder for [ServerpodCreateApp].
 class CreateAppStateHolder extends ServerpodAppStateHolder<CreateConfigState> {
-  CreateAppStateHolder(this._state);
+  CreateAppStateHolder(this._state) {
+    initialize();
+  }
 
   final CreateConfigState _state;
 

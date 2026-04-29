@@ -2,7 +2,7 @@ import 'package:nocterm/nocterm.dart';
 import 'package:serverpod_cli/src/commands/create/tui/main_screen.dart';
 import 'package:serverpod_cli/src/commands/create/tui/state_holder.dart';
 import 'package:serverpod_cli/src/commands/tui/app.dart';
-import 'package:serverpod_cli/src/commands/tui/serverpod_theme.dart';
+import 'package:serverpod_cli/src/commands/tui/spinner.dart';
 
 /// Root TUI component for `serverpod create`
 class ServerpodCreateApp extends ServerpodApp<CreateAppStateHolder> {
@@ -35,8 +35,8 @@ class ServerpodCreateAppState extends ServerpodAppState<ServerpodCreateApp> {
   Component build(BuildContext context) {
     final state = component.holder.state;
 
-    return ServerpodTheme(
-      data: ServerpodThemeData.dark,
+    return SpinnerScope(
+      active: state.activeOperations.isNotEmpty,
       child: Focusable(
         focused: true,
         onKeyEvent: _handleKeyEvent,
