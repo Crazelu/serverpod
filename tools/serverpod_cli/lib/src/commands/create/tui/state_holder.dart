@@ -2,6 +2,7 @@ import 'package:serverpod_cli/src/commands/create/tui/app.dart';
 import 'package:serverpod_cli/src/commands/create/tui/state.dart';
 import 'package:serverpod_cli/src/commands/tui/app_state_holder.dart';
 
+/// State holder for [ServerpodCreateApp].
 class CreateAppStateHolder
     implements ServerpodAppStateHolder<CreateConfigState> {
   CreateAppStateHolder(this._state);

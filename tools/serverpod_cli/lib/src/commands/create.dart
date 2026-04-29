@@ -132,7 +132,9 @@ class CreateCommand extends ServerpodCommand<CreateOption> {
 
       if (!resourceManager.isTemplatesInstalled) {
         log.error(
-          'Could not download the required resources for Serverpod. Make sure that you are connected to the internet and that you are using the latest version of Serverpod.',
+          'Could not download the required resources for Serverpod. '
+          'Make sure that you are connected to the internet and that '
+          'you are using the latest version of Serverpod.',
         );
         throw ExitException.error();
       }
@@ -174,6 +176,31 @@ class CreateCommand extends ServerpodCommand<CreateOption> {
     nocterm.shutdownApp(exitCode);
   }
 
+  /// Flushes success logs if [projectCreated] is true.
+  /// Otherwise, error logs are flushed if any.
+  /// This is done when shutting down nocterm but before exiting
+  /// the Dart process.
+  Future<void> _preExit({
+    required ServerpodTemplateType template,
+    required bool projectCreated,
+    required String serverPath,
+  }) async {
+    if (projectCreated) {
+      log.info(
+        'Serverpod project created.',
+        newParagraph: true,
+        type: TextLogType.success,
+      );
+
+      if (template.isServer) logStartInstructions(serverPath);
+    } else {
+      flushErrors();
+    }
+
+    await log.flush();
+  }
+
+  /// Creates Serverpod project with TUI.
   Future<void> _performCreateWithTui(
     String name,
     ServerpodTemplateType template,
@@ -187,26 +214,16 @@ class CreateCommand extends ServerpodCommand<CreateOption> {
     initializeLoggerWith(logger);
     logger.attach(holder);
 
-    bool createdProject = false;
+    bool projectCreated = false;
     String serverPath = name;
 
     await nocterm.runApp(
       backend: ServerpodTerminalBackend(
-        preExit: () async {
-          if (createdProject) {
-            log.info(
-              'Serverpod project created.',
-              newParagraph: true,
-              type: TextLogType.success,
-            );
-
-            if (template.isServer) logStartInstructions(serverPath);
-          } else {
-            flushErrors();
-          }
-
-          await log.flush();
-        },
+        preExit: () => _preExit(
+          template: template,
+          projectCreated: projectCreated,
+          serverPath: serverPath,
+        ),
       ),
       nocterm.NoctermApp(
         theme: nocterm.TuiThemeData.dark.copyWith(
@@ -214,7 +231,7 @@ class CreateCommand extends ServerpodCommand<CreateOption> {
         ),
         child: ServerpodCreateApp(
           holder: holder,
-          onConfirm: () async {
+          onCreate: () async {
             final context = state.toTemplateContext();
             final (
               :success,
@@ -227,7 +244,7 @@ class CreateCommand extends ServerpodCommand<CreateOption> {
               context: context,
             );
 
-            createdProject = success;
+            projectCreated = success;
             serverPath = relativeServerPath;
 
             await _shutdownNocterm(success ? 0 : 1);
