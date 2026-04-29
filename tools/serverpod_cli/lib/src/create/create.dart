@@ -29,6 +29,8 @@ import 'package:yaml_edit/yaml_edit.dart';
 import 'copier.dart';
 import 'template_renderer.dart';
 
+typedef CreateResult = ({bool success, String relativeServerPath});
+
 enum ServerpodTemplateType {
   mini('mini'),
   server('server'),
@@ -47,7 +49,43 @@ enum ServerpodTemplateType {
   }
 }
 
+extension ServerpodTemplateTypeExtension on ServerpodTemplateType {
+  bool get isServer => this == ServerpodTemplateType.server;
+  bool get isModule => this == ServerpodTemplateType.module;
+  bool get isMini => this == ServerpodTemplateType.mini;
+}
+
+List<String> _errorBuffer = [];
+
+void _logError(String message) {
+  _errorBuffer.add(message);
+  log.error(message);
+}
+
+void flushErrors() {
+  _errorBuffer.forEach(log.error);
+  _errorBuffer.clear();
+}
+
 Future<bool> performCreate(
+  String name,
+  ServerpodTemplateType template,
+  bool force, {
+  required bool? interactive,
+  required TemplateContext context,
+}) async {
+  _errorBuffer.clear();
+  final (:success, :relativeServerPath) = await performCreateWithResult(
+    name,
+    template,
+    force,
+    interactive: interactive,
+    context: context,
+  );
+  return success;
+}
+
+Future<CreateResult> performCreateWithResult(
   String name,
   ServerpodTemplateType template,
   bool force, {
@@ -73,11 +111,11 @@ Future<bool> performCreate(
 
   // check if project name is valid
   if (!StringValidators.isValidProjectName(name)) {
-    log.error(
+    _logError(
       'Invalid project name. Project names can only contain letters, numbers, '
       'and underscores.',
     );
-    return false;
+    return (success: false, relativeServerPath: '');
   }
 
   var serverpodDirs = ServerpodDirectories(
@@ -86,8 +124,8 @@ Future<bool> performCreate(
   );
   var pubspecFile = File(p.join(serverpodDirs.projectDir.path, 'pubspec.yaml'));
   if (pubspecFile.existsSync()) {
-    log.error('Project $name already exists.');
-    return false;
+    _logError('Project $name already exists.');
+    return (success: false, relativeServerPath: '');
   }
 
   if (template == ServerpodTemplateType.module) {
@@ -204,12 +242,12 @@ Future<bool> performCreate(
         try {
           script = _locateFlutterBuildScript(serverpodDirs.serverDir);
         } catch (e) {
-          log.error('Error when locating flutter build script: $e');
+          _logError('Error when locating flutter build script: $e');
           return false;
         }
 
         if (script == null) {
-          log.error('Failed to locate flutter build script, skipping build.');
+          _logError('Failed to locate flutter build script, skipping build.');
           return false;
         }
 
@@ -223,7 +261,7 @@ Future<bool> performCreate(
         stderrController.stream
             .transform(const Utf8Decoder(allowMalformed: true))
             .transform(const LineSplitter())
-            .listen((data) => log.error(data));
+            .listen((data) => _logError(data));
         final toErrorLog = IOSink(stderrController);
 
         final exitCode = await execute(
@@ -250,41 +288,43 @@ Future<bool> performCreate(
       from: serverpodDirs.projectDir.path,
     );
     if (template == ServerpodTemplateType.server) {
-      _logStartInstructions(relativeServerPath);
+      logStartInstructions(relativeServerPath);
     } else if (template == ServerpodTemplateType.mini) {
       _logMiniStartInstructions(relativeServerPath);
     }
+
+    return (success: success, relativeServerPath: relativeServerPath);
   }
 
-  return success;
+  return (success: success, relativeServerPath: '');
 }
 
-Future<bool> _performUpgrade(
+Future<CreateResult> _performUpgrade(
   ServerpodTemplateType template, {
   required bool? interactive,
   required TemplateContext context,
 }) async {
   if (template != ServerpodTemplateType.server) {
-    log.error(
+    _logError(
       'The upgrade command can only be used with server templates.',
     );
-    return false;
+    return (success: false, relativeServerPath: '');
   }
 
   var serverDir = findServerDirectory(Directory.current);
   if (serverDir == null) {
-    log.error(
+    _logError(
       'Could not find a Serverpod project in the current directory.',
     );
-    return false;
+    return (success: false, relativeServerPath: '');
   }
 
   var name = await getProjectName(serverDir);
   if (name == null) {
-    log.error(
+    _logError(
       'Could not find a project name in the pubspec.yaml file.',
     );
-    return false;
+    return (success: false, relativeServerPath: '');
   }
 
   var serverpodDir = ServerpodDirectories(
@@ -329,10 +369,10 @@ Future<bool> _performUpgrade(
       type: TextLogType.success,
     );
 
-    _logStartInstructions(name);
+    logStartInstructions(name);
   }
 
-  return success;
+  return (success: success, relativeServerPath: name);
 }
 
 /// Parses and renders the template files in the given directory.
@@ -382,7 +422,7 @@ void _logMiniStartInstructions(String relativeServerPath) {
   log.info(' ');
 }
 
-void _logStartInstructions(String relativeServerPath) {
+void logStartInstructions(String relativeServerPath) {
   log.info(
     'All setup. You are ready to rock! 🥳',
     type: TextLogType.header,

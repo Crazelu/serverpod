@@ -1,5 +1,11 @@
 import 'package:cli_tools/cli_tools.dart';
 import 'package:config/config.dart';
+import 'package:nocterm/nocterm.dart' as nocterm;
+import 'package:serverpod_cli/src/commands/create/tui/app.dart';
+import 'package:serverpod_cli/src/commands/create/tui/state.dart';
+import 'package:serverpod_cli/src/commands/create/tui/state_holder.dart';
+import 'package:serverpod_cli/src/commands/tui/terminal_backend.dart';
+import 'package:serverpod_cli/src/commands/tui/tui_logger.dart';
 import 'package:serverpod_cli/src/create/create.dart';
 import 'package:serverpod_cli/src/create/template_context.dart';
 import 'package:serverpod_cli/src/downloads/resource_manager.dart';
@@ -54,6 +60,13 @@ enum CreateOption<V> implements OptionDefinition<V> {
           'Can also be specified as the first argument.',
       mandatory: true,
     ),
+  ),
+  tui(
+    FlagOption(
+      argName: 'tui',
+      defaultsTo: true,
+      helpText: 'Show interactive terminal UI.',
+    ),
   );
 
   static const _templateGroup = MutuallyExclusive(
@@ -93,6 +106,7 @@ class CreateCommand extends ServerpodCommand<CreateOption> {
         : commandConfig.value(CreateOption.template);
     var force = commandConfig.value(CreateOption.force);
     var name = commandConfig.value(CreateOption.name);
+    var useTui = commandConfig.value(CreateOption.tui);
 
     // Get interactive flag from global configuration
     final interactive = serverpodRunner.globalConfiguration.optionalValue(
@@ -124,6 +138,16 @@ class CreateCommand extends ServerpodCommand<CreateOption> {
       }
     }
 
+    if (useTui && !template.isMini) {
+      await _performCreateWithTui(
+        name,
+        template,
+        force,
+        interactive: interactive,
+      );
+      return;
+    }
+
     final context = TemplateContext(
       auth: true,
       redis: true,
@@ -140,5 +164,77 @@ class CreateCommand extends ServerpodCommand<CreateOption> {
     )) {
       throw ExitException.error();
     }
+  }
+
+  /// Shuts down Nocterm and closes the TuiLogger.
+  /// Initializes the default logger for post-nocterm logs.
+  Future<void> _shutdownNocterm([int exitCode = 0]) async {
+    await closeLogger();
+    initializeLogger();
+    nocterm.shutdownApp(exitCode);
+  }
+
+  Future<void> _performCreateWithTui(
+    String name,
+    ServerpodTemplateType template,
+    bool force, {
+    required bool? interactive,
+  }) async {
+    final state = CreateConfigState(template);
+    final holder = CreateAppStateHolder(state);
+
+    final logger = TuiLogger();
+    initializeLoggerWith(logger);
+    logger.attach(holder);
+
+    bool createdProject = false;
+    String serverPath = name;
+
+    await nocterm.runApp(
+      backend: ServerpodTerminalBackend(
+        preExit: () async {
+          if (createdProject) {
+            log.info(
+              'Serverpod project created.',
+              newParagraph: true,
+              type: TextLogType.success,
+            );
+
+            if (template.isServer) logStartInstructions(serverPath);
+          } else {
+            flushErrors();
+          }
+
+          await log.flush();
+        },
+      ),
+      nocterm.NoctermApp(
+        theme: nocterm.TuiThemeData.dark.copyWith(
+          background: nocterm.Color.defaultColor,
+        ),
+        child: ServerpodCreateApp(
+          holder: holder,
+          onConfirm: () async {
+            final context = state.toTemplateContext();
+            final (
+              :success,
+              :relativeServerPath,
+            ) = await performCreateWithResult(
+              name,
+              template,
+              force,
+              interactive: interactive,
+              context: context,
+            );
+
+            createdProject = success;
+            serverPath = relativeServerPath;
+
+            await _shutdownNocterm(success ? 0 : 1);
+          },
+          onQuit: () => _shutdownNocterm(1),
+        ),
+      ),
+    );
   }
 }
