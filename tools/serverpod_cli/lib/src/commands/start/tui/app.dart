@@ -3,9 +3,9 @@ import 'dart:async';
 import 'package:nocterm/nocterm.dart';
 import 'package:serverpod_cli/src/commands/tui/app.dart';
 import 'package:serverpod_cli/src/commands/tui/app_state_holder.dart';
+import 'package:serverpod_cli/src/commands/tui/serverpod_theme.dart';
 
 import 'main_screen.dart';
-import 'serverpod_theme.dart';
 import 'state.dart';
 
 /// Provides access to the shared [ServerWatchState] and a way to trigger
