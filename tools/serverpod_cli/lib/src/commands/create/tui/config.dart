@@ -28,7 +28,8 @@ enum ServerpodCreateConfig<T extends ConfigOption> {
         disabledOption: BoolConfigOption.disabled,
       ),
     ],
-  );
+  )
+  ;
 
   const ServerpodCreateConfig({
     required this.label,
@@ -51,7 +52,8 @@ abstract class ConfigOption {
 /// Binary [ConfigOption] that can either be [enabled] or [disabled].
 enum BoolConfigOption implements ConfigOption {
   enabled('Enabled'),
-  disabled('Disabled');
+  disabled('Disabled')
+  ;
 
   const BoolConfigOption(this.label);
 
@@ -63,7 +65,8 @@ enum BoolConfigOption implements ConfigOption {
 enum DatabaseConfigOption implements ConfigOption {
   postgres('Postgres'),
   sqlite('SQLite'),
-  none('None');
+  none('None')
+  ;
 
   const DatabaseConfigOption(this.label);
 
@@ -86,6 +89,6 @@ class ConfigRequirement<T extends ConfigOption> {
   /// The option for [requiredConfig] that must be satisified.
   final T requiredConfigOption;
 
-  /// Option to set if this requirement is not satisfied
+  /// Option to set if this requirement is not satisfied.
   final ConfigOption disabledOption;
 }

@@ -15,8 +15,11 @@ abstract class ServerpodAppStateHolder<S extends ServerpodState> {
   final StreamController<void> _dirtyController = StreamController<void>();
   late final StreamSubscription<void> _dirtySub;
 
+  /// Shared state that can be mutated.
   S get state;
 
+  /// The currently mounted widget state, if not null;
+  /// This is used to trigger rebuilds.
   ServerpodAppState? get widgetState;
 
   /// Throttle window for [markDirty]. A trickle of log events from an
@@ -40,8 +43,10 @@ abstract class ServerpodAppStateHolder<S extends ServerpodState> {
         .listen((_) => widgetState?.rebuild());
   }
 
+  /// Attaches to a mounted widget state.
   void attach(covariant ServerpodAppState widgetState);
 
+  /// Detaches from an unmounted widget state.
   void detach(covariant ServerpodAppState widgetState);
 
   /// Schedule a rebuild on the currently mounted state. Coalesced

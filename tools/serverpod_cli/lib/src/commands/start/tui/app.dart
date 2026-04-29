@@ -8,12 +8,7 @@ import 'main_screen.dart';
 
 import 'state.dart';
 
-/// Provides access to the shared [ServerWatchState] and a way to trigger
-/// rebuilds on the currently mounted [ServerpodWatchAppState].
-///
-/// The backend mutates [state] directly, then calls [markDirty] to schedule
-/// a rebuild. This avoids proxying every mutation method and survives
-/// `NoctermApp` rebuilds that recreate the widget state.
+/// State holder for [ServerpodWatchApp].
 class StartAppStateHolder extends ServerpodAppStateHolder<ServerWatchState> {
   StartAppStateHolder(this._state) {
     initialize();

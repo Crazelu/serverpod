@@ -3,7 +3,7 @@ import 'package:serverpod_cli/src/commands/create/tui/main_screen.dart';
 import 'package:serverpod_cli/src/commands/create/tui/state_holder.dart';
 import 'package:serverpod_cli/src/commands/tui/app.dart';
 
-/// Root TUI component for `serverpod create`
+/// Root TUI component for `serverpod create`.
 class ServerpodCreateApp extends ServerpodApp<CreateAppStateHolder> {
   const ServerpodCreateApp({
     super.key,
