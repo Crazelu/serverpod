@@ -1,7 +1,6 @@
 import 'package:cli_tools/cli_tools.dart';
-
-import 'app.dart';
-import 'state.dart';
+import 'package:serverpod_cli/src/commands/tui/app_state_holder.dart';
+import 'package:serverpod_cli/src/commands/tui/state.dart';
 
 /// A [Logger] implementation that routes messages to the TUI state.
 ///
@@ -10,7 +9,7 @@ import 'state.dart';
 class TuiLogger extends Logger {
   TuiLogger() : super(LogLevel.debug);
 
-  AppStateHolder? _holder;
+  ServerpodAppStateHolder? _holder;
   final List<TuiLogEntry> _buffer = [];
   int _progressCounter = 0;
 
@@ -18,7 +17,7 @@ class TuiLogger extends Logger {
   int? get wrapTextColumn => null;
 
   /// Attach to the TUI state holder. Flushes any buffered messages.
-  void attach(AppStateHolder holder) {
+  void attach(ServerpodAppStateHolder holder) {
     _holder = holder;
     if (_buffer.isNotEmpty) {
       holder.state.logHistory.addAll(_buffer);
@@ -131,7 +130,7 @@ class TuiLogger extends Logger {
   }
 
   void _completeProgress(
-    AppStateHolder? holder,
+    ServerpodAppStateHolder? holder,
     String id, {
     required bool success,
   }) {

@@ -1,16 +1,17 @@
 import 'package:serverpod_cli/src/commands/start/tui/app.dart';
 import 'package:serverpod_cli/src/commands/start/tui/state.dart';
-import 'package:serverpod_cli/src/commands/start/tui/tui_logger.dart';
+import 'package:serverpod_cli/src/commands/tui/state.dart';
+import 'package:serverpod_cli/src/commands/tui/tui_logger.dart';
 import 'package:test/test.dart';
 
 void main() {
   late ServerWatchState state;
-  late AppStateHolder holder;
+  late StartAppStateHolder holder;
   late TuiLogger logger;
 
   setUp(() {
     state = ServerWatchState();
-    holder = AppStateHolder(state);
+    holder = StartAppStateHolder(state);
     logger = TuiLogger();
   });
 

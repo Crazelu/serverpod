@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:serverpod_cli/src/commands/start/tui/app.dart';
 import 'package:serverpod_cli/src/commands/start/tui/event_handler.dart';
 import 'package:serverpod_cli/src/commands/start/tui/state.dart';
+import 'package:serverpod_cli/src/commands/tui/state.dart';
 import 'package:test/test.dart';
 import 'package:vm_service/vm_service.dart';
 
@@ -17,11 +18,11 @@ Event _logEvent(Map<String, Object?> data) {
 
 void main() {
   late ServerWatchState state;
-  late AppStateHolder holder;
+  late StartAppStateHolder holder;
 
   setUp(() {
     state = ServerWatchState();
-    holder = AppStateHolder(state);
+    holder = StartAppStateHolder(state);
   });
 
   group('Given a log event', () {

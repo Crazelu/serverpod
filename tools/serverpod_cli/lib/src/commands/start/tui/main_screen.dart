@@ -1,6 +1,7 @@
 import 'package:nocterm/nocterm.dart';
+import 'package:serverpod_cli/src/commands/tui/components.dart';
+import 'package:serverpod_cli/src/commands/tui/state.dart';
 
-import 'components.dart';
 import 'help_overlay.dart';
 import 'loading_screen.dart';
 import 'serverpod_theme.dart';

@@ -309,3 +309,77 @@ class _TrackedOperationWidgetState extends State<TrackedOperationWidget> {
     );
   }
 }
+
+// -- LogViewerWidget --
+
+/// Renders structured log entries with active tracked operations
+/// stacked at the bottom.
+class LogViewerWidget extends StatelessComponent {
+  const LogViewerWidget({
+    super.key,
+    required this.state,
+    required this.scrollController,
+    this.borderColor,
+    this.header,
+  });
+
+  final ServerpodState state;
+  final ScrollController scrollController;
+  final Color? borderColor;
+  final Component? header;
+
+  @override
+  Component build(BuildContext context) {
+    final items = state.logHistory;
+
+    return Stack(
+      children: [
+        BorderedBox(
+          color: borderColor,
+          child: Column(
+            children: [
+              Expanded(
+                child: SelectionArea(
+                  onSelectionCompleted: (text) {
+                    if (text.isNotEmpty) ClipboardManager.copy(text);
+                  },
+                  child: Scrollbar(
+                    controller: scrollController,
+                    thumbVisibility: true,
+                    child: ListView.builder(
+                      controller: scrollController,
+                      reverse: true,
+                      keyboardScrollable: false,
+                      itemCount: items.length,
+                      itemBuilder: (context, index) {
+                        return switch (items[items.length - 1 - index]) {
+                          TuiLogEntry entry => LogMessageWidget(
+                            key: ValueKey(index),
+                            entry: entry,
+                          ),
+                          CompletedOperation op => CompletedOperationWidget(
+                            key: ValueKey(index),
+                            operation: op,
+                          ),
+                        };
+                      },
+                    ),
+                  ),
+                ),
+              ),
+              // Pinned active operations
+              if (state.activeOperations.isNotEmpty) ...[
+                for (final op in state.activeOperations.values)
+                  TrackedOperationWidget(
+                    key: ValueKey(op.id),
+                    operation: op,
+                  ),
+              ],
+            ],
+          ),
+        ),
+        ?header,
+      ],
+    );
+  }
+}

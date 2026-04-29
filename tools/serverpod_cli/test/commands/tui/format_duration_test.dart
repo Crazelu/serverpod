@@ -1,4 +1,4 @@
-import 'package:serverpod_cli/src/commands/start/tui/format_duration.dart';
+import 'package:serverpod_cli/src/commands/tui/format_duration.dart';
 import 'package:test/test.dart';
 
 void main() {

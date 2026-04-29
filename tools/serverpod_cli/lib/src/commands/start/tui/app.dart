@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:nocterm/nocterm.dart';
+import 'package:serverpod_cli/src/commands/tui/app.dart';
+import 'package:serverpod_cli/src/commands/tui/app_state_holder.dart';
 
 import 'main_screen.dart';
 import 'serverpod_theme.dart';
@@ -12,29 +14,35 @@ import 'state.dart';
 /// The backend mutates [state] directly, then calls [markDirty] to schedule
 /// a rebuild. This avoids proxying every mutation method and survives
 /// `NoctermApp` rebuilds that recreate the widget state.
-class AppStateHolder {
-  AppStateHolder(this.state);
+class StartAppStateHolder implements ServerpodAppStateHolder<ServerWatchState> {
+  StartAppStateHolder(this._state);
 
-  final ServerWatchState state;
+  final ServerWatchState _state;
+
   ServerpodWatchAppState? _widgetState;
   VoidCallback? _onHotReload;
   VoidCallback? _onCreateMigration;
   VoidCallback? _onApplyMigration;
   VoidCallback? _onQuit;
 
-  void _attach(ServerpodWatchAppState s) {
-    _widgetState = s;
-    s.onHotReload = _onHotReload;
-    s.onCreateMigration = _onCreateMigration;
-    s.onApplyMigration = _onApplyMigration;
-    s.onQuit = _onQuit;
+  @override
+  ServerWatchState get state => _state;
+
+  @override
+  void attach(ServerpodWatchAppState widgetState) {
+    _widgetState = widgetState;
+    widgetState.onHotReload = _onHotReload;
+    widgetState.onCreateMigration = _onCreateMigration;
+    widgetState.onApplyMigration = _onApplyMigration;
+    widgetState.onQuit = _onQuit;
   }
 
-  void _detach(ServerpodWatchAppState s) {
-    if (_widgetState == s) _widgetState = null;
+  @override
+  void detach(ServerpodWatchAppState widgetState) {
+    if (_widgetState == widgetState) _widgetState = null;
   }
 
-  /// Trigger a rebuild on the currently mounted state.
+  @override
   void markDirty() => _widgetState?._rebuild();
 
   set onHotReload(VoidCallback? cb) {
@@ -59,21 +67,20 @@ class AppStateHolder {
 }
 
 /// Root TUI component for `serverpod start`.
-class ServerpodWatchApp extends StatefulComponent {
+class ServerpodWatchApp extends ServerpodApp<StartAppStateHolder> {
   const ServerpodWatchApp({
     super.key,
-    required this.holder,
+    required super.holder,
     required this.onReady,
   });
 
-  final AppStateHolder holder;
-  final void Function(AppStateHolder holder) onReady;
+  final void Function(StartAppStateHolder holder) onReady;
 
   @override
-  State<ServerpodWatchApp> createState() => ServerpodWatchAppState();
+  ServerpodAppState createState() => ServerpodWatchAppState();
 }
 
-class ServerpodWatchAppState extends State<ServerpodWatchApp> {
+class ServerpodWatchAppState extends ServerpodAppState<ServerpodWatchApp> {
   final logScrollController = ScrollController();
   final rawScrollController = ScrollController();
 
@@ -88,7 +95,7 @@ class ServerpodWatchAppState extends State<ServerpodWatchApp> {
   @override
   void initState() {
     super.initState();
-    component.holder._attach(this);
+    component.holder.attach(this);
     // Keep splash visible for at least 5 seconds.
     Timer(const Duration(seconds: 5), () {
       _minSplashElapsed = true;
@@ -101,7 +108,7 @@ class ServerpodWatchAppState extends State<ServerpodWatchApp> {
 
   @override
   void dispose() {
-    component.holder._detach(this);
+    component.holder.detach(this);
     super.dispose();
   }
 
