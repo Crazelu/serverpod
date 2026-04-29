@@ -4,8 +4,13 @@ import 'package:nocterm/nocterm.dart';
 import 'package:serverpod_cli/src/commands/tui/app.dart';
 import 'package:serverpod_cli/src/commands/tui/app_state_holder.dart';
 import 'package:serverpod_cli/src/commands/tui/serverpod_theme.dart';
+import 'package:serverpod_cli/src/commands/tui/state.dart';
 
 import 'main_screen.dart';
+import 'package:stream_transform/stream_transform.dart';
+
+import 'main_screen.dart';
+import '../../tui/spinner.dart';
 import 'state.dart';
 
 /// Provides access to the shared [ServerWatchState] and a way to trigger
@@ -14,8 +19,10 @@ import 'state.dart';
 /// The backend mutates [state] directly, then calls [markDirty] to schedule
 /// a rebuild. This avoids proxying every mutation method and survives
 /// `NoctermApp` rebuilds that recreate the widget state.
-class StartAppStateHolder implements ServerpodAppStateHolder<ServerWatchState> {
-  StartAppStateHolder(this._state);
+class StartAppStateHolder extends ServerpodAppStateHolder<ServerWatchState> {
+  StartAppStateHolder(this._state) {
+    initialize();
+  }
 
   final ServerWatchState _state;
 
@@ -27,6 +34,9 @@ class StartAppStateHolder implements ServerpodAppStateHolder<ServerWatchState> {
 
   @override
   ServerWatchState get state => _state;
+
+  @override
+  ServerpodAppState? get widgetState => _widgetState;
 
   @override
   void attach(ServerpodWatchAppState widgetState) {
@@ -41,9 +51,6 @@ class StartAppStateHolder implements ServerpodAppStateHolder<ServerWatchState> {
   void detach(ServerpodWatchAppState widgetState) {
     if (_widgetState == widgetState) _widgetState = null;
   }
-
-  @override
-  void markDirty() => _widgetState?._rebuild();
 
   set onHotReload(VoidCallback? cb) {
     _onHotReload = cb;
@@ -120,6 +127,11 @@ class ServerpodWatchAppState extends ServerpodAppState<ServerpodWatchApp> {
     }
   }
 
+  @override
+  void rebuild() {
+    _rebuild();
+  }
+
   void _rebuild() {
     if (!mounted) return;
     _tryDismissSplash();
@@ -130,8 +142,8 @@ class ServerpodWatchAppState extends ServerpodAppState<ServerpodWatchApp> {
   Component build(BuildContext context) {
     final state = component.holder.state;
 
-    return ServerpodTheme(
-      data: ServerpodThemeData.dark,
+    return SpinnerScope(
+      active: state.activeOperations.isNotEmpty,
       child: Focusable(
         focused: true,
         onKeyEvent: _handleKeyEvent,
@@ -168,12 +180,6 @@ class ServerpodWatchAppState extends ServerpodAppState<ServerpodWatchApp> {
     }
     // When help is open, absorb all keys except H (toggle) and Q (quit).
     if (state.showHelp) return true;
-
-    if (event.logicalKey == LogicalKey.keyX) {
-      state.expandOperations = !state.expandOperations;
-      _rebuild();
-      return true;
-    }
 
     if (event.logicalKey == LogicalKey.tab) {
       state.selectedTab = (state.selectedTab + 1) % 2;

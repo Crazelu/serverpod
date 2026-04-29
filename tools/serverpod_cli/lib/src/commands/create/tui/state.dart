@@ -36,13 +36,10 @@ class CreateConfigState extends ServerpodState {
   int get focusedConfigIndex => _focusedConfigIndex;
 
   @override
-  final logHistory = BoundedQueueList<LogEntry>(1000);
+  final logHistory = BoundedQueueList<Object>(1000);
 
   @override
   final Map<String, TrackedOperation> activeOperations = {};
-
-  @override
-  final rawLines = BoundedQueueList(0);
 
   /// Called when project creation starts.
   /// This transitions the UI to a log viewer.

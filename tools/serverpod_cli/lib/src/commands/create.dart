@@ -5,7 +5,7 @@ import 'package:serverpod_cli/src/commands/create/tui/app.dart';
 import 'package:serverpod_cli/src/commands/create/tui/state.dart';
 import 'package:serverpod_cli/src/commands/create/tui/state_holder.dart';
 import 'package:serverpod_cli/src/commands/tui/terminal_backend.dart';
-import 'package:serverpod_cli/src/commands/tui/tui_logger.dart';
+import 'package:serverpod_cli/src/commands/tui/tui_log_writer.dart';
 import 'package:serverpod_cli/src/create/create.dart';
 import 'package:serverpod_cli/src/create/template_context.dart';
 import 'package:serverpod_cli/src/downloads/resource_manager.dart';
@@ -67,7 +67,8 @@ enum CreateOption<V> implements OptionDefinition<V> {
       defaultsTo: true,
       helpText: 'Show interactive terminal UI.',
     ),
-  );
+  )
+  ;
 
   static const _templateGroup = MutuallyExclusive(
     'Project Template',
@@ -168,7 +169,7 @@ class CreateCommand extends ServerpodCommand<CreateOption> {
     }
   }
 
-  /// Shuts down Nocterm and closes the TuiLogger.
+  /// Shuts down Nocterm and closes the TuiLogWriter.
   /// Initializes the default logger for post-nocterm logs.
   Future<void> _shutdownNocterm([int exitCode = 0]) async {
     await closeLogger();
@@ -210,9 +211,9 @@ class CreateCommand extends ServerpodCommand<CreateOption> {
     final state = CreateConfigState(template);
     final holder = CreateAppStateHolder(state);
 
-    final logger = TuiLogger();
-    initializeLoggerWith(logger);
-    logger.attach(holder);
+    final tuiWriter = TuiLogWriter();
+    initializeLoggerWith(ServerpodCliLogger(tuiWriter));
+    tuiWriter.attach(holder);
 
     bool projectCreated = false;
     String serverPath = name;

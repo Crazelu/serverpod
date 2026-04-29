@@ -31,12 +31,6 @@ class _HelpOverlayState extends State<HelpOverlay> {
       ],
     ),
     (
-      'View',
-      [
-        ('x', 'Expand/collapse operations'),
-      ],
-    ),
-    (
       'Tabs',
       [
         ('Tab', 'Switch tab'),

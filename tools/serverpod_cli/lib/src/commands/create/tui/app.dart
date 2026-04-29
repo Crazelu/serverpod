@@ -67,12 +67,6 @@ class ServerpodCreateAppState extends ServerpodAppState<ServerpodCreateApp> {
     // When help is open, absorb all keys except H (toggle) and Q (quit).
     if (state.showHelp) return true;
 
-    if (event.logicalKey == LogicalKey.keyX) {
-      state.expandOperations = !state.expandOperations;
-      rebuild();
-      return true;
-    }
-
     // Scrolling.
     final c = state.creatingProject ? _logScrollController : _scrollController;
 

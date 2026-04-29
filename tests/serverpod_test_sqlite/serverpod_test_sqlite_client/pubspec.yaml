@@ -9,7 +9,7 @@ description: SQLite project test client for Serverpod.
 repository: https://github.com/serverpod/serverpod
 
 environment:
-  sdk: '^3.8.0'
+  sdk: '^3.10.3'
 
 dependencies:
   serverpod_client: 3.5.0-beta.4
@@ -24,3 +24,5 @@ dependency_overrides:
     path: ../../../packages/serverpod_serialization
   serverpod_service_client:
     path: ../../../packages/serverpod_service_client
+  serverpod_shared:
+    path: ../../../packages/serverpod_shared

@@ -34,7 +34,8 @@ typedef CreateResult = ({bool success, String relativeServerPath});
 enum ServerpodTemplateType {
   mini('mini'),
   server('server'),
-  module('module');
+  module('module'),
+  ;
 
   final String name;
   const ServerpodTemplateType(this.name);
@@ -414,7 +415,7 @@ void _logMiniStartInstructions(String relativeServerPath) {
       newParagraph: true,
     );
     log.info(
-      'dart bin/main.dart',
+      'dart run bin/main.dart',
       type: TextLogType.command,
     );
   }
@@ -461,7 +462,7 @@ void logStartInstructions(String relativeServerPath) {
       type: TextLogType.command,
     );
     log.info(
-      'dart bin/main.dart --apply-migrations',
+      'dart run bin/main.dart --apply-migrations',
       type: TextLogType.command,
     );
   }

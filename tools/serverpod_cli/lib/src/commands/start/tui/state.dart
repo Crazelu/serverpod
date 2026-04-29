@@ -5,9 +5,10 @@ import 'package:serverpod_cli/src/commands/tui/state.dart';
 class ServerWatchState extends ServerpodState {
   ServerWatchState();
 
-  /// Structured log entries for the "Log Messages" tab.
+  /// Log history entries: [LogEntry] (from serverpod_shared) or
+  /// [CompletedOperation].
   @override
-  final logHistory = BoundedQueueList<LogEntry>(maxLogEntries);
+  final logHistory = BoundedQueueList<Object>(maxLogEntries);
 
   /// Raw stdout/stderr lines for the "Raw Output" tab.
   @override

@@ -40,12 +40,6 @@ class MainScreen extends StatelessComponent {
       ],
     ),
     (
-      'View',
-      [
-        ('x', 'Expand/collapse operations'),
-      ],
-    ),
-    (
       'Actions',
       [
         ('Enter', 'Create project'),

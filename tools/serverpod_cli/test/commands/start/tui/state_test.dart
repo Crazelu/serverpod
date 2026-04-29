@@ -18,7 +18,6 @@ void main() {
       expect(state.serverReady, isFalse);
       expect(state.showSplash, isTrue);
       expect(state.showHelp, isFalse);
-      expect(state.expandOperations, isFalse);
     });
   });
 }

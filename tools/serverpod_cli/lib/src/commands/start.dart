@@ -5,26 +5,27 @@ import 'dart:io';
 import 'package:args/args.dart';
 import 'package:cli_tools/cli_tools.dart';
 import 'package:config/config.dart';
-import 'package:nocterm/nocterm.dart' as nocterm;
+import 'package:nocterm/nocterm.dart';
 import 'package:path/path.dart' as p;
 import 'package:serverpod_cli/analyzer.dart';
 import 'package:serverpod_cli/src/commands/generate.dart';
 import 'package:serverpod_cli/src/commands/messages.dart';
 import 'package:serverpod_cli/src/commands/start/file_watcher.dart';
 import 'package:serverpod_cli/src/commands/start/kernel_compiler.dart';
+import 'package:serverpod_cli/src/commands/start/mcp_server.dart';
 import 'package:serverpod_cli/src/commands/start/mcp_socket.dart';
 import 'package:serverpod_cli/src/commands/start/server_process.dart';
 import 'package:serverpod_cli/src/commands/start/tui/app.dart';
 import 'package:serverpod_cli/src/commands/start/tui/event_handler.dart';
 import 'package:serverpod_cli/src/commands/start/tui/state.dart';
 import 'package:serverpod_cli/src/commands/start/watch_session.dart';
-import 'package:serverpod_cli/src/commands/tui/state.dart';
 import 'package:serverpod_cli/src/commands/tui/tui_log_sink.dart';
-import 'package:serverpod_cli/src/commands/tui/tui_logger.dart';
+import 'package:serverpod_cli/src/commands/tui/tui_log_writer.dart';
 import 'package:serverpod_cli/src/commands/watcher.dart';
 import 'package:serverpod_cli/src/generator/analyzers.dart';
 import 'package:serverpod_cli/src/generator/generation_staleness.dart';
 import 'package:serverpod_cli/src/generator/isolated_analyzers.dart';
+import 'package:serverpod_cli/src/migrations/create_migration_action.dart';
 import 'package:serverpod_cli/src/runner/serverpod_command.dart';
 import 'package:serverpod_cli/src/runner/serverpod_command_runner.dart';
 import 'package:serverpod_cli/src/util/file_ex.dart';
@@ -77,7 +78,8 @@ enum StartOption<V> implements OptionDefinition<V> {
       defaultsTo: true,
       helpText: 'Show interactive terminal UI.',
     ),
-  );
+  ),
+  ;
 
   const StartOption(this.option);
 
@@ -373,6 +375,7 @@ Future<int> _runWatchMode({
   }
 
   return _startWatchSession(
+    config: config,
     serverDir: serverDir,
     serverArgs: serverArgs,
     serverpodToolDir: serverpodToolDir,
@@ -411,6 +414,7 @@ Future<int> _runWatchMode({
 /// The session still runs code generation and triggers VM service reloads
 /// for static file changes.
 Future<int> _startWatchSession({
+  required GeneratorConfig config,
   required String serverDir,
   required List<String> serverArgs,
   required String serverpodToolDir,
@@ -504,12 +508,17 @@ Future<int> _startWatchSession({
   // current MCP tools require the compiler and process lifecycle.
   McpSocketServer? mcpSocket;
   if (!noFes) {
-    mcpSocket = McpSocketServer(
-      socketPath: p.join(serverpodToolDir, 'mcp.sock'),
-    );
+    mcpSocket = McpSocketServer(project: config.name);
     try {
       await mcpSocket.start();
-      mcpSocket.connect(onApplyMigration: session.applyMigration);
+      mcpSocket.connect(
+        onApplyMigration: session.applyMigration,
+        onCreateMigration: ({String? tag, bool force = false}) =>
+            _createMigrationForMcp(config, tag: tag, force: force),
+        onHotReload: session.forceReload,
+        getVmServiceUri: () => session.vmServiceUri,
+        vmServiceUriChanges: session.vmServiceUriChanges,
+      );
       log.info('MCP server listening on ${mcpSocket.socketPath}');
     } on SocketException catch (e) {
       log.warning('Failed to start MCP server: $e');
@@ -625,27 +634,27 @@ Future<int> _runWithTui({
       interactive: interactive,
       onExitCode: (code) => exitCode = code,
     ).catchError((Object e, StackTrace st) {
-      h.state.logHistory.add(
-        TuiLogEntry(
-          timestamp: DateTime.now(),
-          level: TuiLogLevel.fatal,
-          message: 'Fatal error: $e\n$st',
-        ),
-      );
-      h.markDirty();
+      log.error('Fatal error: $e', stackTrace: st);
       exitCode = 1;
     });
   }
 
   // Block on the TUI.
-  await nocterm.runApp(
-    nocterm.NoctermApp(
-      theme: nocterm.TuiThemeData.dark.copyWith(
-        background: nocterm.Color.defaultColor,
-      ),
-      child: ServerpodWatchApp(
-        holder: holder,
-        onReady: onReady,
+  await runApp(
+    NoctermApp(
+      child: Builder(
+        builder: (context) {
+          var themeData = TuiTheme.of(context);
+          return TuiTheme(
+            data: themeData.copyWith(
+              background: Color.defaultColor,
+            ),
+            child: ServerpodWatchApp(
+              holder: holder,
+              onReady: onReady,
+            ),
+          );
+        },
       ),
     ),
   );
@@ -662,12 +671,12 @@ Future<void> _runTuiBackend({
   required bool? interactive,
   required void Function(int) onExitCode,
 }) async {
-  final tuiLogger = TuiLogger();
+  final tuiWriter = TuiLogWriter();
 
   try {
-    // Replace the CLI logger with the TUI-aware logger.
-    initializeLoggerWith(tuiLogger);
-    tuiLogger.attach(holder);
+    // Replace the CLI logger with a TUI-backed logger.
+    initializeLoggerWith(ServerpodCliLogger(tuiWriter));
+    tuiWriter.attach(holder);
 
     final directory = commandConfig.value(StartOption.directory);
 
@@ -717,7 +726,7 @@ Future<void> _runTuiBackend({
         log.error('Code generation failed.');
         await (await analyzersFuture).close();
         onExitCode(1);
-        nocterm.shutdownApp(1);
+        shutdownApp(1);
         return;
       }
     }
@@ -737,7 +746,7 @@ Future<void> _runTuiBackend({
       await compiler.dispose();
       log.error('Initial compilation failed.');
       onExitCode(1);
-      nocterm.shutdownApp(1);
+      shutdownApp(1);
       return;
     }
 
@@ -815,12 +824,18 @@ Future<void> _runTuiBackend({
 
     // Start MCP socket server.
     McpSocketServer? mcpSocket;
-    mcpSocket = McpSocketServer(
-      socketPath: p.join(serverpodToolDir, 'mcp.sock'),
-    );
+    mcpSocket = McpSocketServer(project: config.name);
     try {
       await mcpSocket.start();
-      mcpSocket.connect(onApplyMigration: session.applyMigration);
+      mcpSocket.connect(
+        onApplyMigration: session.applyMigration,
+        onCreateMigration: ({String? tag, bool force = false}) =>
+            _createMigrationForMcp(config, tag: tag, force: force),
+        onHotReload: session.forceReload,
+        getLogHistory: () => holder.state.logHistory.toList(),
+        getVmServiceUri: () => session.vmServiceUri,
+        vmServiceUriChanges: session.vmServiceUriChanges,
+      );
       log.info('MCP server listening on ${mcpSocket.socketPath}');
     } on SocketException catch (e) {
       log.warning('Failed to start MCP server: $e');
@@ -857,10 +872,17 @@ Future<void> _runTuiBackend({
       if (startedDocker) {
         await _stopDockerServices(serverDir);
       }
-      nocterm.shutdownApp(0);
+      shutdownApp(0);
     };
     holder.onHotReload = () {
       runTrackedAction(holder, 'Hot reload', session.forceReload);
+    };
+    holder.onCreateMigration = () {
+      runTrackedAction(
+        holder,
+        'Creating migration',
+        () => _runCreateMigrationForTui(config),
+      );
     };
     holder.onApplyMigration = () {
       runTrackedAction(holder, 'Applying migrations', session.applyMigration);
@@ -885,14 +907,74 @@ Future<void> _runTuiBackend({
   } catch (e, st) {
     // Show the error in the TUI. Keep it open so the user can read it.
     holder.state.showSplash = false;
-    holder.state.logHistory.add(
-      TuiLogEntry(
-        timestamp: DateTime.now(),
-        level: TuiLogLevel.error,
-        message: '$e\n$st',
-      ),
-    );
-    holder.markDirty();
+    log.error('$e', stackTrace: st);
     onExitCode(1);
   }
+}
+
+/// Maps a [CreateMigrationOutcome] to a `(message, isError)` pair shared by
+/// the TUI and MCP wrappers. [forceHint] is the surface-specific instruction
+/// for retrying past warnings (e.g. `--force` for the CLI/TUI, `force: true`
+/// for the MCP tool).
+({String message, bool isError}) _describeCreateMigration(
+  CreateMigrationOutcome outcome, {
+  required String forceHint,
+}) {
+  return switch (outcome) {
+    CreateMigrationCreated(:final versionName, :final migrationDirectory) => (
+      message: 'Migration "$versionName" created at $migrationDirectory.',
+      isError: false,
+    ),
+    CreateMigrationNoChanges() => (
+      message: 'No schema changes detected; no migration created.',
+      isError: false,
+    ),
+    CreateMigrationAborted() => (
+      message: 'Migration aborted due to warnings. $forceHint',
+      isError: true,
+    ),
+    CreateMigrationFailed(:final message) => (
+      message: message,
+      isError: true,
+    ),
+  };
+}
+
+/// Runs `create-migration` for the TUI's Create Migration button.
+///
+/// Logs the outcome; throws on failure so [runTrackedAction] marks the
+/// operation red.
+Future<void> _runCreateMigrationForTui(GeneratorConfig config) async {
+  final outcome = await createMigrationAction(config: config);
+  final result = _describeCreateMigration(
+    outcome,
+    forceHint: 'Run `serverpod create-migration --force` to create it anyway.',
+  );
+  if (result.isError) throw Exception(result.message);
+  log.info(result.message);
+}
+
+/// Runs `create-migration` for the MCP `create_migration` tool. Returns a
+/// structured result so the MCP server can flag errors.
+Future<CreateMigrationMcpResult> _createMigrationForMcp(
+  GeneratorConfig config, {
+  String? tag,
+  bool force = false,
+}) async {
+  final outcome = await createMigrationAction(
+    config: config,
+    tag: tag,
+    force: force,
+  );
+  final result = _describeCreateMigration(
+    outcome,
+    forceHint: 'Call again with `force: true` to create it anyway.',
+  );
+  final followUp = outcome is CreateMigrationCreated
+      ? ' Call `apply_migrations` to run it against the database.'
+      : '';
+  return CreateMigrationMcpResult(
+    message: result.message + followUp,
+    isError: result.isError,
+  );
 }
