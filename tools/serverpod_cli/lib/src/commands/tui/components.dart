@@ -383,3 +383,34 @@ class LogViewerWidget extends StatelessComponent {
     );
   }
 }
+
+// -- RadioButton --
+
+/// Renders a radio button component
+class RadioButton extends StatelessComponent {
+  const RadioButton({
+    required this.label,
+    required this.focused,
+    required this.value,
+  });
+
+  final bool value;
+  final bool focused;
+  final String label;
+
+  @override
+  Component build(BuildContext context) {
+    final indicator = value ? '◉' : '○';
+    final style = TextStyle(
+      fontWeight: focused ? FontWeight.normal : FontWeight.dim,
+    );
+
+    return Row(
+      children: [
+        Text(indicator, style: style),
+        const SizedBox(width: 2),
+        Text(label, style: style),
+      ],
+    );
+  }
+}
