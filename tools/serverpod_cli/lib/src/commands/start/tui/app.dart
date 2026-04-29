@@ -3,14 +3,10 @@ import 'dart:async';
 import 'package:nocterm/nocterm.dart';
 import 'package:serverpod_cli/src/commands/tui/app.dart';
 import 'package:serverpod_cli/src/commands/tui/app_state_holder.dart';
-import 'package:serverpod_cli/src/commands/tui/serverpod_theme.dart';
-import 'package:serverpod_cli/src/commands/tui/state.dart';
+import 'package:serverpod_cli/src/commands/tui/spinner.dart';
 
 import 'main_screen.dart';
-import 'package:stream_transform/stream_transform.dart';
 
-import 'main_screen.dart';
-import '../../tui/spinner.dart';
 import 'state.dart';
 
 /// Provides access to the shared [ServerWatchState] and a way to trigger
