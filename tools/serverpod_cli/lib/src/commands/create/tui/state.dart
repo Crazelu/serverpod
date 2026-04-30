@@ -6,17 +6,17 @@ import 'package:serverpod_cli/src/create/template_context.dart';
 
 /// Central state for [ServerpodCreateApp] rendered by nocterm.
 class CreateConfigState extends ServerpodState {
-  CreateConfigState(this.template) {
-    configValues = ServerpodCreateConfig.values;
+  CreateConfigState(ServerpodTemplateType template) {
+    configValues = [];
     _stateValues = {};
     _optionStateValues = {};
-    for (final config in configValues) {
+    for (final config in ServerpodCreateConfig.values) {
+      if (!config.templates.contains(template)) return;
+      configValues.add(config);
       _stateValues[config] = config.defaultOption;
       _optionStateValues[config] = ServerpodCreateConfigState(config);
     }
   }
-
-  final ServerpodTemplateType template;
 
   late final List<ServerpodCreateConfig> configValues;
 
@@ -102,10 +102,10 @@ class CreateConfigState extends ServerpodState {
   }
 
   /// Returns the selected [ConfigOption] for [config].
-  T getSelectionOptionFor<T extends ConfigOption>(
+  T? getSelectionOptionFor<T extends ConfigOption>(
     ServerpodCreateConfig<T> config,
   ) {
-    return _stateValues[config] as T;
+    return _stateValues[config] as T?;
   }
 
   /// Returns true if [option] is the selected option for [config].

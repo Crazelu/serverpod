@@ -1,3 +1,5 @@
+import 'package:serverpod_cli/src/create/create.dart';
+
 /// Configuration for [ServerpodCreateApp].
 /// The enum values are mapped to the configurable features
 /// for the `serverpod create` command, typically held by [TemplateContext].
@@ -6,21 +8,25 @@ enum ServerpodCreateConfig<T extends ConfigOption> {
     label: 'Database',
     options: DatabaseConfigOption.values,
     defaultOption: DatabaseConfigOption.postgres,
+    templates: [ServerpodTemplateType.server, ServerpodTemplateType.module],
   ),
   redis<BoolConfigOption>(
     label: 'Redis (inter-server pubsub & caching)',
     options: BoolConfigOption.values,
     defaultOption: BoolConfigOption.enabled,
+    templates: [ServerpodTemplateType.server, ServerpodTemplateType.module],
   ),
   web<BoolConfigOption>(
     label: 'Webserver',
     options: BoolConfigOption.values,
     defaultOption: BoolConfigOption.enabled,
+    templates: [ServerpodTemplateType.server],
   ),
   auth<BoolConfigOption>(
     label: 'Authentication (requires Postgres)',
     options: BoolConfigOption.values,
     defaultOption: BoolConfigOption.enabled,
+    templates: [ServerpodTemplateType.server],
     requirements: [
       ConfigRequirement(
         requiredConfig: ServerpodCreateConfig.database,
@@ -35,21 +41,33 @@ enum ServerpodCreateConfig<T extends ConfigOption> {
     required this.label,
     required this.options,
     required this.defaultOption,
+    required this.templates,
     this.requirements = const [],
   });
 
+  /// UI visible label for this config.
   final String label;
+
+  /// Supported config options.
   final List<T> options;
+
+  /// The default config option.
   final T defaultOption;
+
+  /// Requirements for other related configs that must be satisfied
+  /// for this config to be enabled.
   final List<ConfigRequirement> requirements;
+
+  /// Supported template types for this config.
+  final List<ServerpodTemplateType> templates;
 }
 
-/// Represents an option for [ServerpodCreateConfig].
+/// A [ServerpodCreateConfig] option.
 abstract class ConfigOption {
   String get label;
 }
 
-/// Binary [ConfigOption] that can either be [enabled] or [disabled].
+/// [ConfigOption] that can either be [enabled] or [disabled].
 enum BoolConfigOption implements ConfigOption {
   enabled('Enabled'),
   disabled('Disabled')
