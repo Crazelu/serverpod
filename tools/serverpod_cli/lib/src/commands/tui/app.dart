@@ -3,6 +3,7 @@ import 'package:nocterm/nocterm.dart';
 import 'package:serverpod_cli/src/commands/tui/app_state_holder.dart';
 import 'package:serverpod_cli/src/commands/tui/spinner.dart';
 
+/// A root TUI component.
 abstract class ServerpodApp<T extends ServerpodAppStateHolder>
     extends StatefulComponent {
   const ServerpodApp({super.key, required this.holder});
@@ -13,6 +14,7 @@ abstract class ServerpodApp<T extends ServerpodAppStateHolder>
   ServerpodAppState<ServerpodApp> createState();
 }
 
+/// The logic and internal state for a [ServerpodApp].
 abstract class ServerpodAppState<S extends ServerpodApp> extends State<S> {
   @override
   void initState() {
@@ -36,6 +38,9 @@ abstract class ServerpodAppState<S extends ServerpodApp> extends State<S> {
     setState(() {});
   }
 
+  /// Describes the part of the user interface represented by this component.
+  Component buildApp(BuildContext context);
+
   @override
   @protected
   Component build(BuildContext context) {
@@ -58,6 +63,4 @@ abstract class ServerpodAppState<S extends ServerpodApp> extends State<S> {
       ),
     );
   }
-
-  Component buildApp(BuildContext context);
 }
