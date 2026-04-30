@@ -311,17 +311,27 @@ class RadioButton extends StatelessComponent {
     required this.label,
     required this.focused,
     required this.value,
+    this.enabled = true,
   });
 
   final bool value;
   final bool focused;
   final String label;
 
+  /// When false, the option is shown dimmed and must not receive focus
+  /// in navigation logic.
+  final bool enabled;
+
   @override
   Component build(BuildContext context) {
+    final st = ServerpodTheme.of(context);
     final indicator = value ? '◉' : '○';
+    final Color? color = enabled ? null : st.subtleDivider;
     final style = TextStyle(
-      fontWeight: focused ? FontWeight.normal : FontWeight.dim,
+      color: color,
+      fontWeight: enabled
+          ? (focused ? FontWeight.normal : FontWeight.dim)
+          : FontWeight.dim,
     );
 
     return Row(

@@ -55,6 +55,48 @@ class CreateConfigState extends ServerpodState {
     } else if (_focusedConfigIndex < 0) {
       _focusedConfigIndex = maxFocusedConfigIndex;
     }
+    _snapFocusedOptionIfNeeded();
+  }
+
+  /// True when [option] cannot be chosen for [config] because a
+  /// [ServerpodCreateConfig.requirements] clause is not satisfied.
+  bool isOptionConstrained(
+    ServerpodCreateConfig config,
+    ConfigOption option,
+  ) {
+    for (final req in config.requirements) {
+      if (_isRequirementUnsatisfied(req)) {
+        return option != req.disabledOption;
+      }
+    }
+    return false;
+  }
+
+  /// True when [config] is partially locked because at least one requirement
+  /// on another config is not satisfied.
+  bool isConfigConstrained(ServerpodCreateConfig config) {
+    return config.requirements.any(_isRequirementUnsatisfied);
+  }
+
+  void _snapFocusedOptionIfNeeded() {
+    final config = configValues[_focusedConfigIndex];
+    final configState = _optionStateValues[config];
+    if (configState == null) return;
+    final option = config.options[configState.focusedOptionIndex];
+    if (!isOptionConstrained(config, option)) return;
+    for (var i = 0; i < config.options.length; i++) {
+      final o = config.options[i];
+      if (!isOptionConstrained(config, o)) {
+        configState._focusedOptionIndex = i;
+        return;
+      }
+    }
+  }
+
+  /// True when [req] is not satisfied given current selections.
+  bool _isRequirementUnsatisfied(ConfigRequirement req) {
+    return getSelectionOptionFor(req.requiredConfig) !=
+        req.requiredConfigOption;
   }
 
   /// Updates the selected [ConfigOption] for the focused [ServerpodCreateConfig].

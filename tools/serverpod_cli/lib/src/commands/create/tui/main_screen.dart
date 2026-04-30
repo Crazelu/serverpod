@@ -88,7 +88,7 @@ class MainScreen extends StatelessComponent {
     final prefix = creatingProject ? 'Creating' : 'Configure Your';
 
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 1),
+      padding: const EdgeInsets.only(bottom: 1),
       child: Column(
         children: [
           Text(
@@ -148,24 +148,31 @@ class MainScreen extends StatelessComponent {
           state.getStateFor(config)?.focusedOptionIndex == optionIndex;
     }
 
+    final titleColor = !state.isConfigConstrained(config)
+        ? selectedOption?.isUserDisabled ?? false
+              ? Colors.white
+              : theme.success
+        : theme.failure;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           config.label,
           style: TextStyle(
+            color: titleColor,
             fontWeight: focused ? FontWeight.bold : FontWeight.dim,
           ),
         ),
-        const SizedBox(height: 1),
         Row(
           children: [
             for (final option in config.options.indexed) ...[
               _buildConfigurationOption(
                 theme,
                 option.$2,
-                selectedOption == option.$2,
-                isOptionFocused(option.$1),
+                selected: selectedOption == option.$2,
+                focused: isOptionFocused(option.$1),
+                enabled: !state.isOptionConstrained(config, option.$2),
               ),
               const SizedBox(width: 2),
             ],
@@ -177,14 +184,16 @@ class MainScreen extends StatelessComponent {
 
   Component _buildConfigurationOption(
     ServerpodThemeData theme,
-    ConfigOption option,
-    bool selected,
-    bool focused,
-  ) {
+    ConfigOption option, {
+    required bool selected,
+    required bool focused,
+    required bool enabled,
+  }) {
     return RadioButton(
       label: option.label,
       focused: focused,
       value: selected,
+      enabled: enabled,
     );
   }
 
@@ -279,5 +288,12 @@ class MainScreen extends StatelessComponent {
       state: holder.state,
       scrollController: logScrollController,
     );
+  }
+}
+
+extension on ConfigOption {
+  bool get isUserDisabled {
+    return (this is BoolConfigOption && this == BoolConfigOption.disabled) ||
+        (this is DatabaseConfigOption && this == DatabaseConfigOption.none);
   }
 }
