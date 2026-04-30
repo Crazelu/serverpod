@@ -58,16 +58,22 @@ class MainScreen extends StatelessComponent {
 
     return Stack(
       children: [
-        Column(
-          children: [
-            _buildHeader(theme),
-            Expanded(
-              child: creatingProject ? _buildLogView() : _buildForm(theme),
+        BorderedBox(
+          color: theme.activeTab,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 1),
+            child: Column(
+              children: [
+                _buildHeader(theme),
+                Expanded(
+                  child: creatingProject ? _buildLogView() : _buildForm(theme),
+                ),
+                const SizedBox(height: 1),
+                _buildFooter(theme),
+                const SizedBox(height: 1),
+              ],
             ),
-            const SizedBox(height: 1),
-            _buildFooter(theme),
-            const SizedBox(height: 1),
-          ],
+          ),
         ),
         if (state.showHelp) const HelpOverlay(bindings: _helpBindings),
       ],
