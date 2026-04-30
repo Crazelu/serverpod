@@ -42,9 +42,9 @@ class MainScreen extends StatelessComponent {
     (
       'Actions',
       [
-        ('Enter', 'Create project'),
-        ('Space', 'Select option'),
-        ('←↑↓→', 'Navigate through options'),
+        ('Enter', 'Create Project'),
+        ('↑↓', 'Navigate Options'),
+        ('←→', 'Select Option'),
         ('Q', 'Quit'),
       ],
     ),
@@ -56,26 +56,29 @@ class MainScreen extends StatelessComponent {
     final state = holder.state;
     final creatingProject = state.creatingProject;
 
-    return Stack(
+    return Column(
       children: [
-        BorderedBox(
-          color: theme.activeTab,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 1),
-            child: Column(
-              children: [
-                _buildHeader(theme),
-                Expanded(
-                  child: creatingProject ? _buildLogView() : _buildForm(theme),
+        Expanded(
+          child: Stack(
+            children: [
+              BorderedBox(
+                color: theme.activeTab,
+                child: Column(
+                  children: [
+                    _buildHeader(theme),
+                    Expanded(
+                      child: creatingProject
+                          ? _buildLogView()
+                          : _buildForm(theme),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 1),
-                _buildFooter(theme),
-                const SizedBox(height: 1),
-              ],
-            ),
+              ),
+              if (state.showHelp) const HelpOverlay(bindings: _helpBindings),
+            ],
           ),
         ),
-        if (state.showHelp) const HelpOverlay(bindings: _helpBindings),
+        _buildButtonBar(theme),
       ],
     );
   }
@@ -101,12 +104,15 @@ class MainScreen extends StatelessComponent {
   }
 
   Component _buildForm(ServerpodThemeData theme) {
-    return Scrollbar(
-      controller: scrollController,
-      thumbVisibility: true,
-      child: ListView(
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 1),
+      child: Scrollbar(
         controller: scrollController,
-        children: [_buildConfigurations(theme)],
+        thumbVisibility: true,
+        child: ListView(
+          controller: scrollController,
+          children: [_buildConfigurations(theme)],
+        ),
       ),
     );
   }
@@ -182,11 +188,12 @@ class MainScreen extends StatelessComponent {
     );
   }
 
-  Component _buildFooter(ServerpodThemeData theme) {
+  Component _buildButtonBar(ServerpodThemeData theme) {
     final state = holder.state;
     final creatingProject = state.creatingProject;
     return Row(
       children: [
+        const SizedBox(width: 1),
         Button(
           name: 'Create Project',
           activationChar: 'Enter',
@@ -201,15 +208,10 @@ class MainScreen extends StatelessComponent {
         const SizedBox(width: 2),
 
         Button(
-          name: 'Navigate',
-          activationChar: '←↑↓→',
+          name: 'Navigate Options',
+          activationChar: '↑↓',
           enabled: !creatingProject,
-          activationKeys: const [
-            LogicalKey.arrowUp,
-            LogicalKey.arrowDown,
-            LogicalKey.arrowLeft,
-            LogicalKey.arrowRight,
-          ],
+          activationKeys: const [LogicalKey.arrowUp, LogicalKey.arrowDown],
           onActivate: (key) {
             switch (key) {
               case LogicalKey.arrowUp:
@@ -228,24 +230,25 @@ class MainScreen extends StatelessComponent {
                   scrollController.scrollDown(4);
                 }
                 break;
-              case LogicalKey.arrowLeft:
-                state.updateFocusedConfigOption(-1);
-                break;
-              case LogicalKey.arrowRight:
-                state.updateFocusedConfigOption(1);
-                break;
             }
             holder.markDirty();
           },
         ),
         const SizedBox(width: 2),
         Button(
-          name: 'Select',
-          activationChar: 'Space',
+          name: 'Select Option',
+          activationChar: '←→',
           enabled: !creatingProject,
-          activationKeys: const [LogicalKey.space],
-          onActivate: (_) {
-            state.selectConfigOption();
+          activationKeys: const [LogicalKey.arrowLeft, LogicalKey.arrowRight],
+          onActivate: (key) {
+            switch (key) {
+              case LogicalKey.arrowLeft:
+                state.selectConfigOption(-1);
+                break;
+              case LogicalKey.arrowRight:
+                state.selectConfigOption(1);
+                break;
+            }
             holder.markDirty();
           },
         ),

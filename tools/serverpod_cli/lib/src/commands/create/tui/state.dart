@@ -57,20 +57,14 @@ class CreateConfigState extends ServerpodState {
     }
   }
 
-  /// Updates the focused [ConfigOption] for the focused [ServerpodCreateConfig].
-  void updateFocusedConfigOption(int delta) {
-    final config = configValues[_focusedConfigIndex];
-    final configState = _optionStateValues[config];
-    configState?._updateFocusedOption(delta);
-  }
-
-  /// Selects the current focused config option for the focused config.
-  void selectConfigOption() {
+  /// Updates the selected [ConfigOption] for the focused [ServerpodCreateConfig].
+  void selectConfigOption(int delta) {
     final config = configValues[_focusedConfigIndex];
     final configState = _optionStateValues[config];
     if (configState == null) return;
+    configState._updateFocusedOption(delta);
     final focusedOptionIndex = configState.focusedOptionIndex;
-    final newSelection = configState.config.options[focusedOptionIndex];
+    final newSelection = config.options[focusedOptionIndex];
     _stateValues[config] = newSelection;
     _evaluateRequirements();
   }
