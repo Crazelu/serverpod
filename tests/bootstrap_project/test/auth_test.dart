@@ -38,6 +38,7 @@ void main() async {
             projectName,
             '-v',
             '--no-analytics',
+            '--no-tui',
           ],
           rootPath: rootPath,
           workingDirectory: d.sandbox,
