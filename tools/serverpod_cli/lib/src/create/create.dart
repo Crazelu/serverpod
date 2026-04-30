@@ -75,7 +75,6 @@ Future<bool> performCreate(
   required bool? interactive,
   required TemplateContext context,
 }) async {
-  _errorBuffer.clear();
   final (:success, :relativeServerPath) = await performCreateWithResult(
     name,
     template,
@@ -93,6 +92,7 @@ Future<CreateResult> performCreateWithResult(
   required bool? interactive,
   required TemplateContext context,
 }) async {
+  _errorBuffer.clear();
   // If the name is a dot, we can either create a new project in the current
   // directory or upgrade an existing project.
   if (name == '.') {
