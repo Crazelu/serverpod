@@ -239,13 +239,11 @@ class LogViewerWidget extends StatelessComponent {
     super.key,
     required this.state,
     required this.scrollController,
-    this.borderColor,
     this.header,
   });
 
   final ServerpodState state;
   final ScrollController scrollController;
-  final Color? borderColor;
   final Component? header;
 
   @override
@@ -254,53 +252,50 @@ class LogViewerWidget extends StatelessComponent {
 
     return Stack(
       children: [
-        BorderedBox(
-          color: borderColor,
-          child: Column(
-            children: [
-              Expanded(
-                child: SelectionArea(
-                  onSelectionCompleted: (text) {
-                    if (text.isNotEmpty) ClipboardManager.copy(text);
-                  },
-                  child: Scrollbar(
+        Column(
+          children: [
+            Expanded(
+              child: SelectionArea(
+                onSelectionCompleted: (text) {
+                  if (text.isNotEmpty) ClipboardManager.copy(text);
+                },
+                child: Scrollbar(
+                  controller: scrollController,
+                  thumbVisibility: true,
+                  child: ListView.builder(
                     controller: scrollController,
-                    thumbVisibility: true,
-                    child: ListView.builder(
-                      controller: scrollController,
-                      reverse: true,
-                      keyboardScrollable: false,
-                      itemCount: items.length,
-                      itemBuilder: (context, index) {
-                        final item = items[items.length - 1 - index];
-                        if (item is LogEntry) {
-                          return LogMessageWidget(
-                            key: ValueKey(index),
-                            entry: item,
-                          );
-                        }
-                        if (item is CompletedOperation) {
-                          return CompletedOperationWidget(
-                            key: ValueKey(index),
-                            operation: item,
-                          );
-                        }
-                        return const SizedBox.shrink();
-                      },
-                    ),
+                    reverse: true,
+                    keyboardScrollable: false,
+                    itemCount: items.length,
+                    itemBuilder: (context, index) {
+                      final item = items[items.length - 1 - index];
+                      if (item is LogEntry) {
+                        return LogMessageWidget(
+                          key: ValueKey(index),
+                          entry: item,
+                        );
+                      }
+                      if (item is CompletedOperation) {
+                        return CompletedOperationWidget(
+                          key: ValueKey(index),
+                          operation: item,
+                        );
+                      }
+                      return const SizedBox.shrink();
+                    },
                   ),
                 ),
               ),
-              // Pinned active operations
-              if (state.activeOperations.isNotEmpty) ...[
-                for (final op in state.activeOperations.values)
-                  TrackedOperationWidget(
-                    key: ValueKey(op.id),
-                    operation: op,
-                  ),
-              ],
+            ),
+            // Pinned active operations
+            if (state.activeOperations.isNotEmpty) ...[
+              for (final op in state.activeOperations.values)
+                TrackedOperationWidget(
+                  key: ValueKey(op.id),
+                  operation: op,
+                ),
             ],
-          ),
+          ],
         ),
         ?header,
       ],
