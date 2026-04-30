@@ -145,7 +145,7 @@ class MainScreen extends StatelessComponent {
     bool focused,
   ) {
     final state = holder.state;
-    final selectedOption = state.getSelectionOptionFor(config);
+    final selectedOption = state.getSelectedOptionFor(config);
 
     bool isOptionFocused(int optionIndex) {
       return focused &&

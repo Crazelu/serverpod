@@ -169,7 +169,7 @@ void main() {
                     config.options[initialFocusedOptionIndex + 1];
 
                 expect(
-                  state.getSelectionOptionFor(config),
+                  state.getSelectedOptionFor(config),
                   expectedOption,
                 );
               });
@@ -226,7 +226,7 @@ void main() {
                 final expectedOption = config.options[indexAfterPositive - 1];
 
                 expect(
-                  state.getSelectionOptionFor(config),
+                  state.getSelectedOptionFor(config),
                   expectedOption,
                 );
               });
@@ -254,7 +254,7 @@ void main() {
         'then config requirements are evaluated for auth config',
         () {
           // Enabled by default
-          var authSelection = state.getSelectionOptionFor<BoolConfigOption>(
+          var authSelection = state.getSelectedOptionFor<BoolConfigOption>(
             ServerpodCreateConfig.auth,
           );
 
@@ -264,7 +264,7 @@ void main() {
           state.selectConfigOption(1);
           state.selectConfigOption(1);
 
-          authSelection = state.getSelectionOptionFor<BoolConfigOption>(
+          authSelection = state.getSelectedOptionFor<BoolConfigOption>(
             ServerpodCreateConfig.auth,
           );
           expect(authSelection, BoolConfigOption.disabled);

@@ -95,8 +95,7 @@ class CreateConfigState extends ServerpodState {
 
   /// True when [req] is not satisfied given current selections.
   bool _isRequirementUnsatisfied(ConfigRequirement req) {
-    return getSelectionOptionFor(req.requiredConfig) !=
-        req.requiredConfigOption;
+    return getSelectedOptionFor(req.requiredConfig) != req.requiredConfigOption;
   }
 
   /// Updates the selected [ConfigOption] for the focused [ServerpodCreateConfig].
@@ -116,7 +115,7 @@ class CreateConfigState extends ServerpodState {
     for (final config in configValues) {
       if (config.requirements.isEmpty) continue;
       for (final req in config.requirements) {
-        final selectedOption = getSelectionOptionFor(req.requiredConfig);
+        final selectedOption = getSelectedOptionFor(req.requiredConfig);
         if (selectedOption != req.requiredConfigOption) {
           _stateValues[config] = req.disabledOption;
           final configState = _optionStateValues[config];
@@ -138,7 +137,7 @@ class CreateConfigState extends ServerpodState {
   }
 
   /// Returns the selected [ConfigOption] for [config].
-  T? getSelectionOptionFor<T extends ConfigOption>(
+  T? getSelectedOptionFor<T extends ConfigOption>(
     ServerpodCreateConfig<T> config,
   ) {
     return _stateValues[config] as T?;
