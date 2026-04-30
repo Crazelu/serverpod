@@ -227,6 +227,7 @@ class CreateCommand extends ServerpodCommand<CreateOption> {
         ),
       ),
       ServerpodCreateApp(
+        name: name,
         holder: holder,
         onCreate: () async {
           final context = state.toTemplateContext();

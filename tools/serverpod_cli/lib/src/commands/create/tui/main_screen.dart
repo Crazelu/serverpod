@@ -8,6 +8,7 @@ import 'package:serverpod_cli/src/commands/tui/serverpod_theme.dart';
 class MainScreen extends StatelessComponent {
   const MainScreen({
     super.key,
+    required this.name,
     required this.holder,
     required this.scrollController,
     required this.logScrollController,
@@ -16,6 +17,7 @@ class MainScreen extends StatelessComponent {
     required this.onToggleHelp,
   });
 
+  final String name;
   final CreateAppStateHolder holder;
   final ScrollController scrollController;
   final ScrollController logScrollController;
@@ -85,14 +87,16 @@ class MainScreen extends StatelessComponent {
 
   Component _buildHeader(ServerpodThemeData theme) {
     final creatingProject = holder.state.creatingProject;
-    final prefix = creatingProject ? 'Creating' : 'Configure Your';
+    final title = creatingProject
+        ? 'Creating the "$name" project'
+        : 'Configure the "$name" project';
 
     return Container(
       padding: const EdgeInsets.only(bottom: 1),
       child: Column(
         children: [
           Text(
-            '$prefix Serverpod Project',
+            title,
             style: TextStyle(
               color: theme.activeTab,
               fontWeight: FontWeight.bold,

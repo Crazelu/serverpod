@@ -7,11 +7,13 @@ import 'package:serverpod_cli/src/commands/tui/app.dart';
 class ServerpodCreateApp extends ServerpodApp<CreateAppStateHolder> {
   const ServerpodCreateApp({
     super.key,
+    required this.name,
     required this.onCreate,
     required this.onQuit,
     required super.holder,
   });
 
+  final String name;
   final VoidCallback onCreate;
   final VoidCallback onQuit;
 
@@ -38,6 +40,7 @@ class ServerpodCreateAppState extends ServerpodAppState<ServerpodCreateApp> {
       focused: true,
       onKeyEvent: _handleKeyEvent,
       child: MainScreen(
+        name: component.name,
         holder: component.holder,
         logScrollController: _logScrollController,
         scrollController: _scrollController,
