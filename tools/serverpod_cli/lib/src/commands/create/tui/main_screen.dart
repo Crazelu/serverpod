@@ -232,7 +232,7 @@ class MainScreen extends StatelessComponent {
                 if (state.focusedConfigIndex == state.maxFocusedConfigIndex) {
                   scrollController.scrollToEnd();
                 } else {
-                  scrollController.scrollUp(4);
+                  scrollController.scrollUp(3);
                 }
                 break;
               case LogicalKey.arrowDown:
@@ -240,7 +240,7 @@ class MainScreen extends StatelessComponent {
                 if (state.focusedConfigIndex == 0) {
                   scrollController.scrollToStart();
                 } else {
-                  scrollController.scrollDown(4);
+                  scrollController.scrollDown(3);
                 }
                 break;
             }
