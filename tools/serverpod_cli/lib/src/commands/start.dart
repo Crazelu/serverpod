@@ -14,6 +14,7 @@ import 'package:serverpod_cli/src/commands/start/file_watcher.dart';
 import 'package:serverpod_cli/src/commands/start/kernel_compiler.dart';
 import 'package:serverpod_cli/src/commands/start/mcp_server.dart';
 import 'package:serverpod_cli/src/commands/start/mcp_socket.dart';
+import 'package:serverpod_cli/src/commands/start/native_assets_builder.dart';
 import 'package:serverpod_cli/src/commands/start/server_process.dart';
 import 'package:serverpod_cli/src/commands/start/tui/app.dart';
 import 'package:serverpod_cli/src/commands/start/tui/event_handler.dart';
@@ -251,6 +252,16 @@ class StartCommand extends ServerpodCommand<StartOption> {
       entryPoint: entryPoint,
       outputDill: dillPath,
     );
+
+    final nativeAssetsBuilder = _createNativeAssetsBuilder(
+      serverDir: serverDir,
+      serverpodToolDir: serverpodToolDir,
+      dartExecutable: compiler.dartExecutable,
+    );
+    if (!await _runHooksFor(nativeAssetsBuilder, compiler)) {
+      throw ExitException.error();
+    }
+
     await compiler.start();
 
     try {
@@ -272,6 +283,42 @@ class StartCommand extends ServerpodCommand<StartOption> {
     } finally {
       await compiler.dispose();
     }
+  }
+}
+
+/// Constructs a [NativeAssetsBuilder] for the server at [serverDir]. The
+/// builder discovers `package_config.json` itself (walking up to a workspace
+/// root if needed).
+NativeAssetsBuilder _createNativeAssetsBuilder({
+  required String serverDir,
+  required String serverpodToolDir,
+  required String dartExecutable,
+}) {
+  return NativeAssetsBuilder(
+    dartExecutable: dartExecutable,
+    serverDir: serverDir,
+    outputDir: p.join(serverpodToolDir, 'native_assets'),
+  );
+}
+
+/// Runs build hooks via [builder] and applies the result to [compiler].
+/// Returns false on hook failure (an error has been logged).
+///
+/// Wraps [NativeAssetsBuilder.applyTo] for the start.dart paths that don't
+/// care about the restart-distinction (initial-build callers and the IDE
+/// reload callback). The watch-loop and migration paths switch on the
+/// outcome directly to read [NativeAssetsApplySuccess.restarted].
+Future<bool> _runHooksFor(
+  NativeAssetsBuilder builder,
+  KernelCompiler compiler,
+) async {
+  final outcome = await builder.applyTo(compiler);
+  switch (outcome) {
+    case NativeAssetsApplySuccess():
+      return true;
+    case NativeAssetsApplyFailure(:final message):
+      log.error(message);
+      return false;
   }
 }
 
@@ -426,6 +473,7 @@ Future<int> _startWatchSession({
   required bool noFes,
 }) async {
   KernelCompiler? compiler;
+  NativeAssetsBuilder? nativeAssetsBuilder;
   ServerProcessFactory? serverProcessFactory;
   ServerProcess initialServerProcess;
 
@@ -446,31 +494,46 @@ Future<int> _startWatchSession({
     // Set up incremental compiler.
     final entryPoint = p.join(serverDir, 'bin', 'main.dart');
     final initialDill = p.join(serverpodToolDir, 'server.dill');
-    compiler = KernelCompiler(
+    final localCompiler = KernelCompiler(
       entryPoint: entryPoint,
       outputDill: initialDill,
     );
-    await compiler.start();
+
+    final localBuilder = _createNativeAssetsBuilder(
+      serverDir: serverDir,
+      serverpodToolDir: serverpodToolDir,
+      dartExecutable: localCompiler.dartExecutable,
+    );
+    if (!await _runHooksFor(localBuilder, localCompiler)) {
+      return 1;
+    }
+
+    await localCompiler.start();
 
     // Compile if the cached dill is stale. The FES starts in the background
     // (KernelCompiler gates compile/reset calls internally until start
     // completes), so if the dill is up to date we boot immediately.
-    if (!await compiler.compileIfNeeded(watcher.watchPaths)) {
-      await compiler.dispose();
+    if (!await localCompiler.compileIfNeeded(watcher.watchPaths)) {
+      await localCompiler.dispose();
       log.error('Initial compilation failed.');
       return 1;
     }
 
-    // IDE reload callback: compile incrementally and return the dill path.
+    // IDE reload callback: re-run native build hooks (manifest may have
+    // changed since the last cycle if the developer edited C source), then
+    // compile and return the dill path.
     Future<String?> onReloadRequested() async {
-      await compiler!.reset();
+      if (!await _runHooksFor(localBuilder, localCompiler)) {
+        return null;
+      }
+      await localCompiler.reset();
       final result = await compileWithProgress(
         'Compiling server (IDE reload)',
-        compiler,
+        localCompiler,
         rejectOnFailure: true,
       );
       if (result == null) return null;
-      compiler.accept();
+      localCompiler.accept();
       return result.dillOutput ?? initialDill;
     }
 
@@ -482,7 +545,7 @@ Future<int> _startWatchSession({
           final serverProcess = ServerProcess(
             serverDir: serverDir,
             serverArgs: [...serverArgs, ...extraArgs],
-            dartExecutable: compiler!.dartExecutable,
+            dartExecutable: localCompiler.dartExecutable,
             enableVmService: true,
             vmServiceInfoFile: vmServiceInfoFile,
             onReloadRequested: onReloadRequested,
@@ -493,10 +556,13 @@ Future<int> _startWatchSession({
         };
 
     initialServerProcess = await serverProcessFactory(initialDill);
+    compiler = localCompiler;
+    nativeAssetsBuilder = localBuilder;
   }
 
   final session = WatchSession(
     compiler: compiler,
+    nativeAssetsBuilder: nativeAssetsBuilder,
     generate: generate,
     createServer: serverProcessFactory,
     initialServer: initialServerProcess,
@@ -740,6 +806,17 @@ Future<void> _runTuiBackend({
       entryPoint: entryPoint,
       outputDill: initialDill,
     );
+
+    final nativeAssetsBuilder = _createNativeAssetsBuilder(
+      serverDir: serverDir,
+      serverpodToolDir: serverpodToolDir,
+      dartExecutable: compiler.dartExecutable,
+    );
+    if (!await _runHooksFor(nativeAssetsBuilder, compiler)) {
+      onExitCode(1);
+      return;
+    }
+
     await compiler.start();
 
     if (!await compiler.compileIfNeeded(
@@ -756,8 +833,15 @@ Future<void> _runTuiBackend({
     final stdoutSink = TuiLogSink(holder);
     final stderrSink = TuiLogSink(holder);
 
-    // IDE reload callback.
+    // IDE reload callback. Re-runs build hooks first so manifest changes
+    // (e.g. edited C source) are picked up before recompiling.
     Future<String?> onReloadRequested() async {
+      if (!await _runHooksFor(
+        nativeAssetsBuilder,
+        compiler,
+      )) {
+        return null;
+      }
       await compiler.reset();
       final result = await compileWithProgress(
         'Compiling server (IDE reload)',
@@ -810,6 +894,7 @@ Future<void> _runTuiBackend({
     // Create watch session.
     final session = WatchSession(
       compiler: compiler,
+      nativeAssetsBuilder: nativeAssetsBuilder,
       generate: (affectedPaths, requirements) async {
         return analyzeAndGenerate(
           analyzers: await analyzersFuture,
