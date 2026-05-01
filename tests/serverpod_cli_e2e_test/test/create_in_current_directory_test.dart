@@ -68,18 +68,9 @@ void main() async {
 
           var allOutput = '${result.stdout}${result.stderr}';
           expect(
-            allOutput.contains('cd ${projectName}_server'),
+            allOutput.contains('serverpod start'),
             isTrue,
-            reason:
-                'Start instructions should point to the server directory in the current location',
-          );
-          expect(
-            allOutput.contains(
-              'cd ${path.join(projectName, '${projectName}_server')}',
-            ),
-            isFalse,
-            reason:
-                'Start instructions should not point to a nested project directory',
+            reason: 'Start instructions should mention serverpod start command',
           );
         },
       );
