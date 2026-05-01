@@ -4,6 +4,16 @@ import 'package:serverpod_cli/src/create/create.dart';
 /// The enum values are mapped to the configurable features
 /// for the `serverpod create` command, typically held by [TemplateContext].
 enum ServerpodCreateConfig<T extends ConfigOption> {
+  template<TemplateTypeOption>(
+    label: 'Project Type',
+    options: TemplateTypeOption.values,
+    defaultOption: TemplateTypeOption.server,
+    templates: [
+      ServerpodTemplateType.server,
+      ServerpodTemplateType.module,
+      ServerpodTemplateType.mini,
+    ],
+  ),
   database<DatabaseConfigOption>(
     label: 'Database',
     options: DatabaseConfigOption.values,
@@ -92,6 +102,19 @@ enum DatabaseConfigOption implements ConfigOption {
   final String label;
 }
 
+/// [ConfigOption] for supported template types.
+enum TemplateTypeOption implements ConfigOption {
+  server('Server'),
+  module('Module'),
+  mini('Mini')
+  ;
+
+  const TemplateTypeOption(this.label);
+
+  @override
+  final String label;
+}
+
 /// Represents a requirement for [ServerpodCreateConfig].
 class ConfigRequirement<T extends ConfigOption> {
   const ConfigRequirement({
@@ -109,4 +132,20 @@ class ConfigRequirement<T extends ConfigOption> {
 
   /// Option to set if this requirement is not satisfied.
   final ConfigOption disabledOption;
+}
+
+extension TemplateTypeOptionExtension on TemplateTypeOption {
+  ServerpodTemplateType get toTemplate => switch (this) {
+    TemplateTypeOption.mini => ServerpodTemplateType.mini,
+    TemplateTypeOption.server => ServerpodTemplateType.server,
+    TemplateTypeOption.module => ServerpodTemplateType.module,
+  };
+}
+
+extension ServerpodTemplateTypeExtension on ServerpodTemplateType {
+  TemplateTypeOption get toConfigOption => switch (this) {
+    ServerpodTemplateType.mini => TemplateTypeOption.mini,
+    ServerpodTemplateType.server => TemplateTypeOption.server,
+    ServerpodTemplateType.module => TemplateTypeOption.module,
+  };
 }

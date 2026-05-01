@@ -230,7 +230,7 @@ class CreateCommand extends ServerpodCommand<CreateOption> {
           final context = state.toTemplateContext();
           projectCreated = await performCreate(
             name,
-            template,
+            state.template ?? template,
             force,
             interactive: interactive,
             context: context,

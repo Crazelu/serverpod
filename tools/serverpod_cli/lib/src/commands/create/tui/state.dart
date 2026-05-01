@@ -7,27 +7,21 @@ import 'package:serverpod_cli/src/create/template_context.dart';
 /// Central state for [ServerpodCreateApp] rendered by nocterm.
 class CreateConfigState extends ServerpodState {
   CreateConfigState(ServerpodTemplateType template) {
-    configValues = [];
-    _stateValues = {};
-    _optionStateValues = {};
-    for (final config in ServerpodCreateConfig.values) {
-      if (!config.templates.contains(template)) return;
-      configValues.add(config);
-      _stateValues[config] = config.defaultOption;
-      _optionStateValues[config] = ServerpodCreateConfigState(config);
-    }
+    _createStates(template);
   }
 
-  late final List<ServerpodCreateConfig> configValues;
+  late final List<ServerpodCreateConfig> configValues = [];
 
   /// Tracked state for selected [ConfigOption] per [ServerpodCreateConfig].
-  late final Map<ServerpodCreateConfig, ConfigOption> _stateValues;
+  late final Map<ServerpodCreateConfig, ConfigOption> _stateValues = {};
 
   /// Tracked state for focused [ConfigOption] per [ServerpodCreateConfig].
   late final Map<ServerpodCreateConfig, ServerpodCreateConfigState>
-  _optionStateValues;
+  _optionStateValues = {};
 
-  late final int maxFocusedConfigIndex = configValues.length - 1;
+  int _maxFocusedConfigIndex = 0;
+
+  int get maxFocusedConfigIndex => _maxFocusedConfigIndex;
 
   bool _creatingProject = false;
   bool get creatingProject => _creatingProject;
@@ -40,6 +34,35 @@ class CreateConfigState extends ServerpodState {
 
   @override
   final Map<String, TrackedOperation> activeOperations = {};
+
+  ServerpodTemplateType? get template =>
+      getSelectedOptionFor<TemplateTypeOption>(
+        ServerpodCreateConfig.template,
+      )?.toTemplate;
+
+  void _createStates(ServerpodTemplateType template) {
+    configValues.clear();
+    _stateValues.clear();
+    _optionStateValues.clear();
+    for (final config in ServerpodCreateConfig.values) {
+      if (!config.templates.contains(template)) continue;
+      configValues.add(config);
+      _stateValues[config] = config.defaultOption;
+      _optionStateValues[config] = ServerpodCreateConfigState(config);
+    }
+
+    _maxFocusedConfigIndex = configValues.length - 1;
+
+    const templateConfig = ServerpodCreateConfig.template;
+
+    // Restore state for template config
+    _stateValues[templateConfig] = template.toConfigOption;
+    final configState = ServerpodCreateConfigState(templateConfig);
+    configState._focusedOptionIndex = templateConfig.options.indexOf(
+      template.toConfigOption,
+    );
+    _optionStateValues[templateConfig] = configState;
+  }
 
   /// Called when project creation starts.
   /// This transitions the UI to a log viewer.
@@ -108,6 +131,15 @@ class CreateConfigState extends ServerpodState {
     final newSelection = config.options[focusedOptionIndex];
     _stateValues[config] = newSelection;
     _evaluateRequirements();
+
+    // Recreate states for new selected template type
+    if (_focusedConfigIndex == 0) {
+      final selected = getSelectedOptionFor<TemplateTypeOption>(
+        ServerpodCreateConfig.template,
+      );
+      if (selected == null) return;
+      _createStates(selected.toTemplate);
+    }
   }
 
   /// Evaluates requirements defined for each [ServerpodCreateConfig].

@@ -44,6 +44,17 @@ void main() {
           expect(context.web, isFalse);
         },
       );
+
+      test(
+        'then the module config option is selected for template config',
+        () {
+          final selected = state.getSelectedOptionFor<TemplateTypeOption>(
+            ServerpodCreateConfig.template,
+          );
+
+          expect(selected, TemplateTypeOption.module);
+        },
+      );
     },
   );
 
@@ -85,6 +96,63 @@ void main() {
           0,
         );
       });
+
+      test(
+        'then the server config option is selected for template config',
+        () {
+          final selected = state.getSelectedOptionFor<TemplateTypeOption>(
+            ServerpodCreateConfig.template,
+          );
+
+          expect(selected, TemplateTypeOption.server);
+        },
+      );
+
+      test(
+        'then the config values are correct',
+        () {
+          expect(
+            state.configValues,
+            containsAllInOrder([
+              ServerpodCreateConfig.template,
+              ServerpodCreateConfig.database,
+              ServerpodCreateConfig.redis,
+              ServerpodCreateConfig.web,
+              ServerpodCreateConfig.auth,
+            ]),
+          );
+        },
+      );
+
+      test(
+        'when the template option is changed to module, '
+        'then the config values are correct',
+        () {
+          state.selectConfigOption(1);
+
+          expect(
+            state.configValues,
+            containsAllInOrder([
+              ServerpodCreateConfig.template,
+              ServerpodCreateConfig.database,
+              ServerpodCreateConfig.redis,
+            ]),
+          );
+        },
+      );
+
+      test(
+        'when the template option is changed to mini, '
+        'then the config values are correct',
+        () {
+          state.selectConfigOption(2);
+
+          expect(
+            state.configValues,
+            containsAllInOrder([ServerpodCreateConfig.template]),
+          );
+        },
+      );
 
       test(
         'then toTemplateContext creates TemplateContext with defaults',
@@ -181,13 +249,13 @@ void main() {
             'then the focused config option index wraps to 0',
             () {
               final config = state.configValues[state.focusedConfigIndex];
-              final configState = state.getStateFor(config);
               final optionsCount = config.options.length;
 
               for (var i = 0; i < optionsCount; i++) {
                 state.selectConfigOption(1);
               }
 
+              final configState = state.getStateFor(config);
               expect(configState!.focusedOptionIndex, 0);
             },
           );
@@ -206,10 +274,11 @@ void main() {
 
               setUp(() {
                 config = state.configValues[state.focusedConfigIndex];
-                configState = state.getStateFor(config);
                 state.selectConfigOption(1);
+                configState = state.getStateFor(config);
                 indexAfterPositive = configState!.focusedOptionIndex;
                 state.selectConfigOption(-1);
+                configState = state.getStateFor(config);
               });
 
               test(
@@ -250,28 +319,6 @@ void main() {
       );
 
       test(
-        'when selecting non-postgres database config option, '
-        'then config requirements are evaluated for auth config',
-        () {
-          // Enabled by default
-          var authSelection = state.getSelectedOptionFor<BoolConfigOption>(
-            ServerpodCreateConfig.auth,
-          );
-
-          expect(authSelection, BoolConfigOption.enabled);
-
-          // Select DatabaseConfigOption.none
-          state.selectConfigOption(1);
-          state.selectConfigOption(1);
-
-          authSelection = state.getSelectedOptionFor<BoolConfigOption>(
-            ServerpodCreateConfig.auth,
-          );
-          expect(authSelection, BoolConfigOption.disabled);
-        },
-      );
-
-      test(
         'then getStatus returns true for option that is selected for a config',
         () {
           final status = state.getStatus(
@@ -302,11 +349,85 @@ void main() {
         expect(configState.focusedOptionIndex, 0);
       });
 
+      test(
+        'when selecting non-postgres database config option, '
+        'then config requirements are evaluated for auth config',
+        () {
+          // Move to database config
+          state.updateFocusedConfig(1);
+
+          // Enabled by default
+          var authSelection = state.getSelectedOptionFor<BoolConfigOption>(
+            ServerpodCreateConfig.auth,
+          );
+
+          expect(authSelection, BoolConfigOption.enabled);
+
+          // Select DatabaseConfigOption.none
+          state.selectConfigOption(1);
+          state.selectConfigOption(1);
+
+          authSelection = state.getSelectedOptionFor<BoolConfigOption>(
+            ServerpodCreateConfig.auth,
+          );
+          expect(authSelection, BoolConfigOption.disabled);
+        },
+      );
+
+      group(
+        'Given a non-postgres database config option is selected',
+        () {
+          setUp(() {
+            // Move to database config
+            state.updateFocusedConfig(1);
+
+            // Select DatabaseConfigOption.none
+            state.selectConfigOption(1);
+            state.selectConfigOption(1);
+          });
+
+          test(
+            'then auth config option is disabled',
+            () {
+              final selected = state.getSelectedOptionFor<BoolConfigOption>(
+                ServerpodCreateConfig.auth,
+              );
+
+              expect(selected, BoolConfigOption.disabled);
+            },
+          );
+
+          test(
+            'when enabling auth config option, '
+            'then it is not enabled',
+            () {
+              // Move to auth config
+              state.updateFocusedConfig(3);
+
+              var selected = state.getSelectedOptionFor<BoolConfigOption>(
+                ServerpodCreateConfig.auth,
+              );
+
+              expect(selected, BoolConfigOption.disabled);
+
+              // Select BoolConfigOption.enabled
+              state.selectConfigOption(-1);
+
+              selected = state.getSelectedOptionFor<BoolConfigOption>(
+                ServerpodCreateConfig.auth,
+              );
+              expect(selected, BoolConfigOption.disabled);
+            },
+          );
+        },
+      );
+
       group('when converting to template context', () {
         test(
           'and database is sqlite then TemplateContext has correct value for sqlite',
           () {
-            // No need to move focus for the config since database has the initial focus
+            // Move to database config
+            state.updateFocusedConfig(1);
             // Select DatabaseConfigOption.sqlite config option
             state.selectConfigOption(1);
 
@@ -320,7 +441,8 @@ void main() {
           'and database is none then TemplateContext '
           'has correct values for postgres, sqlite and auth',
           () {
-            // No need to move focus for the config since database has the initial focus
+            // Move to database config
+            state.updateFocusedConfig(1);
             // Select DatabaseConfigOption.none config option
             state.selectConfigOption(2);
 
@@ -335,7 +457,7 @@ void main() {
           'and redis is disabled then TemplateContext reflects disabled',
           () {
             // Move focus to redis config
-            state.updateFocusedConfig(1);
+            state.updateFocusedConfig(2);
             // Select disabled config option
             state.selectConfigOption(1);
 
@@ -346,7 +468,7 @@ void main() {
 
         test('and web is disabled then TemplateContext reflects disabled', () {
           // Move focus to web config
-          state.updateFocusedConfig(2);
+          state.updateFocusedConfig(3);
           // Select disabled config option
           state.selectConfigOption(1);
 
@@ -362,7 +484,8 @@ void main() {
             // True by default
             expect(context.auth, isTrue);
 
-            // No need to move focus for the config since database has the initial focus
+            // Move to database config
+            state.updateFocusedConfig(1);
             // Select DatabaseConfigOption.sqlite config option
             state.selectConfigOption(1);
 
