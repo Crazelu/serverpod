@@ -1,3 +1,4 @@
+import 'package:ci/ci.dart' as ci;
 import 'package:cli_tools/cli_tools.dart';
 import 'package:config/config.dart';
 import 'package:nocterm/nocterm.dart';
@@ -65,7 +66,8 @@ enum CreateOption<V> implements OptionDefinition<V> {
     FlagOption(
       argName: 'tui',
       defaultsTo: true,
-      helpText: 'Show interactive terminal UI.',
+      helpText:
+          'Show interactive terminal UI. Automatically disabled in CI environments.',
     ),
   )
   ;
@@ -107,7 +109,7 @@ class CreateCommand extends ServerpodCommand<CreateOption> {
         : commandConfig.value(CreateOption.template);
     var force = commandConfig.value(CreateOption.force);
     var name = commandConfig.value(CreateOption.name);
-    var useTui = commandConfig.value(CreateOption.tui);
+    var useTui = commandConfig.value(CreateOption.tui) && !ci.isCI;
 
     // Get interactive flag from global configuration
     final interactive = serverpodRunner.globalConfiguration.optionalValue(
