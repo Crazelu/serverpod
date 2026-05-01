@@ -7,7 +7,7 @@ import 'package:serverpod_cli/src/create/template_context.dart';
 /// Central state for [ServerpodCreateApp] rendered by nocterm.
 class CreateConfigState extends ServerpodState {
   CreateConfigState(ServerpodTemplateType template) {
-    _createStates(template);
+    _resetState(template);
   }
 
   late final List<ServerpodCreateConfig> configValues = [];
@@ -40,7 +40,9 @@ class CreateConfigState extends ServerpodState {
         ServerpodCreateConfig.template,
       )?.toTemplate;
 
-  void _createStates(ServerpodTemplateType template) {
+  /// Resets internal state and restores the state for template config
+  /// based on provided [template].
+  void _resetState(ServerpodTemplateType template) {
     configValues.clear();
     _stateValues.clear();
     _optionStateValues.clear();
@@ -138,7 +140,7 @@ class CreateConfigState extends ServerpodState {
         ServerpodCreateConfig.template,
       );
       if (selected == null) return;
-      _createStates(selected.toTemplate);
+      _resetState(selected.toTemplate);
     }
   }
 
