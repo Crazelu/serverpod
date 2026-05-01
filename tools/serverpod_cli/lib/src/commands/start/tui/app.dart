@@ -10,9 +10,7 @@ import 'state.dart';
 
 /// State holder for [ServerpodWatchApp].
 class StartAppStateHolder extends ServerpodAppStateHolder<ServerWatchState> {
-  StartAppStateHolder(this._state) {
-    initialize();
-  }
+  StartAppStateHolder(this._state);
 
   final ServerWatchState _state;
 

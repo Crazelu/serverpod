@@ -12,6 +12,12 @@ import 'package:stream_transform/stream_transform.dart';
 /// a rebuild. This avoids proxying every mutation method and survives
 /// `NoctermApp` rebuilds that recreate the widget state.
 abstract class ServerpodAppStateHolder<S extends ServerpodState> {
+  ServerpodAppStateHolder() {
+    _dirtySub = _dirtyController.stream
+        .throttle(_rebuildInterval, trailing: true)
+        .listen((_) => widgetState?.rebuild());
+  }
+
   final StreamController<void> _dirtyController = StreamController<void>();
   late final StreamSubscription<void> _dirtySub;
 
@@ -35,13 +41,6 @@ abstract class ServerpodAppStateHolder<S extends ServerpodState> {
   /// screen. At ~7ms/frame (layout+paint dominated), 12.5 FPS keeps
   /// the CPU floor around ~9% vs ~21% at 30 FPS.
   static const _rebuildInterval = Duration(milliseconds: 80);
-
-  @mustCallSuper
-  void initialize() {
-    _dirtySub = _dirtyController.stream
-        .throttle(_rebuildInterval, trailing: true)
-        .listen((_) => widgetState?.rebuild());
-  }
 
   /// Attaches to a mounted widget state.
   void attach(covariant ServerpodAppState widgetState);
