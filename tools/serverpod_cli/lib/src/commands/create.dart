@@ -184,7 +184,6 @@ class CreateCommand extends ServerpodCommand<CreateOption> {
   Future<void> _preExit({
     required ServerpodTemplateType template,
     required bool projectCreated,
-    required String serverPath,
   }) async {
     if (projectCreated) {
       log.info(
@@ -193,7 +192,7 @@ class CreateCommand extends ServerpodCommand<CreateOption> {
         type: TextLogType.success,
       );
 
-      if (template.isServer) logStartInstructions(serverPath);
+      if (template.isServer) logStartInstructions();
     } else {
       flushErrors();
     }
@@ -216,14 +215,12 @@ class CreateCommand extends ServerpodCommand<CreateOption> {
     tuiWriter.attach(holder);
 
     bool projectCreated = false;
-    String serverPath = name;
 
     await runApp(
       backend: ServerpodTerminalBackend(
         preExit: () => _preExit(
           template: template,
           projectCreated: projectCreated,
-          serverPath: serverPath,
         ),
       ),
       ServerpodCreateApp(
@@ -231,10 +228,7 @@ class CreateCommand extends ServerpodCommand<CreateOption> {
         holder: holder,
         onCreate: () async {
           final context = state.toTemplateContext();
-          final (
-            :success,
-            :relativeServerPath,
-          ) = await performCreateWithResult(
+          projectCreated = await performCreate(
             name,
             template,
             force,
@@ -242,10 +236,7 @@ class CreateCommand extends ServerpodCommand<CreateOption> {
             context: context,
           );
 
-          projectCreated = success;
-          serverPath = relativeServerPath;
-
-          await _shutdownNocterm(success ? 0 : 1);
+          await _shutdownNocterm(projectCreated ? 0 : 1);
         },
         onQuit: () => _shutdownNocterm(1),
       ),

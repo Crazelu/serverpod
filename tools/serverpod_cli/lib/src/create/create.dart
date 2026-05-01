@@ -75,23 +75,6 @@ Future<bool> performCreate(
   required bool? interactive,
   required TemplateContext context,
 }) async {
-  final (:success, :relativeServerPath) = await performCreateWithResult(
-    name,
-    template,
-    force,
-    interactive: interactive,
-    context: context,
-  );
-  return success;
-}
-
-Future<CreateResult> performCreateWithResult(
-  String name,
-  ServerpodTemplateType template,
-  bool force, {
-  required bool? interactive,
-  required TemplateContext context,
-}) async {
   _errorBuffer.clear();
   // If the name is a dot, we can either create a new project in the current
   // directory or upgrade an existing project.
@@ -116,7 +99,7 @@ Future<CreateResult> performCreateWithResult(
       'Invalid project name. Project names can only contain letters, numbers, '
       'and underscores.',
     );
-    return (success: false, relativeServerPath: '');
+    return false;
   }
 
   var serverpodDirs = ServerpodDirectories(
@@ -126,7 +109,7 @@ Future<CreateResult> performCreateWithResult(
   var pubspecFile = File(p.join(serverpodDirs.projectDir.path, 'pubspec.yaml'));
   if (pubspecFile.existsSync()) {
     _logError('Project $name already exists.');
-    return (success: false, relativeServerPath: '');
+    return false;
   }
 
   if (template == ServerpodTemplateType.module) {
@@ -284,48 +267,36 @@ Future<CreateResult> performCreateWithResult(
       type: TextLogType.success,
     );
 
-    var relativeServerPath = p.relative(
-      serverpodDirs.serverDir.path,
-      from: serverpodDirs.projectDir.path,
-    );
     if (template == ServerpodTemplateType.server) {
-      logStartInstructions(relativeServerPath);
+      logStartInstructions();
     } else if (template == ServerpodTemplateType.mini) {
-      _logMiniStartInstructions(relativeServerPath);
+      _logMiniStartInstructions();
     }
-
-    return (success: success, relativeServerPath: relativeServerPath);
   }
 
-  return (success: success, relativeServerPath: '');
+  return success;
 }
 
-Future<CreateResult> _performUpgrade(
+Future<bool> _performUpgrade(
   ServerpodTemplateType template, {
   required bool? interactive,
   required TemplateContext context,
 }) async {
   if (template != ServerpodTemplateType.server) {
-    _logError(
-      'The upgrade command can only be used with server templates.',
-    );
-    return (success: false, relativeServerPath: '');
+    _logError('The upgrade command can only be used with server templates.');
+    return false;
   }
 
   var serverDir = findServerDirectory(Directory.current);
   if (serverDir == null) {
-    _logError(
-      'Could not find a Serverpod project in the current directory.',
-    );
-    return (success: false, relativeServerPath: '');
+    _logError('Could not find a Serverpod project in the current directory.');
+    return false;
   }
 
   var name = await getProjectName(serverDir);
   if (name == null) {
-    _logError(
-      'Could not find a project name in the pubspec.yaml file.',
-    );
-    return (success: false, relativeServerPath: '');
+    _logError('Could not find a project name in the pubspec.yaml file.');
+    return false;
   }
 
   var serverpodDir = ServerpodDirectories(
@@ -370,10 +341,10 @@ Future<CreateResult> _performUpgrade(
       type: TextLogType.success,
     );
 
-    logStartInstructions(name);
+    logStartInstructions();
   }
 
-  return (success: success, relativeServerPath: name);
+  return success;
 }
 
 /// Parses and renders the template files in the given directory.
@@ -384,7 +355,7 @@ Future<bool> _renderTemplates(Directory dir, TemplateContext context) async {
   });
 }
 
-void _logMiniStartInstructions(String relativeServerPath) {
+void _logMiniStartInstructions() {
   log.info(
     'All setup. You are ready to rock! 🥳',
     type: TextLogType.header,
@@ -397,33 +368,16 @@ void _logMiniStartInstructions(String relativeServerPath) {
     'Start your Serverpod by running:',
     type: TextLogType.header,
   );
-
-  if (Platform.isWindows) {
-    log.info(
-      'cd .\\$relativeServerPath\\',
-      type: TextLogType.command,
-      newParagraph: true,
-    );
-    log.info(
-      'dart .\\bin\\main.dart',
-      type: TextLogType.command,
-    );
-  } else {
-    log.info(
-      'cd $relativeServerPath',
-      type: TextLogType.command,
-      newParagraph: true,
-    );
-    log.info(
-      'dart run bin/main.dart',
-      type: TextLogType.command,
-    );
-  }
+  log.info(
+    'serverpod start',
+    type: TextLogType.command,
+    newParagraph: true,
+  );
 
   log.info(' ');
 }
 
-void logStartInstructions(String relativeServerPath) {
+void logStartInstructions() {
   log.info(
     'All setup. You are ready to rock! 🥳',
     type: TextLogType.header,
@@ -436,36 +390,11 @@ void logStartInstructions(String relativeServerPath) {
     'Start your Serverpod by running:',
     type: TextLogType.header,
   );
-
-  if (Platform.isWindows) {
-    log.info(
-      'cd .\\$relativeServerPath\\',
-      type: TextLogType.command,
-      newParagraph: true,
-    );
-    log.info(
-      'docker compose up --build --detach',
-      type: TextLogType.command,
-    );
-    log.info(
-      'dart .\\bin\\main.dart --apply-migrations',
-      type: TextLogType.command,
-    );
-  } else {
-    log.info(
-      'cd $relativeServerPath',
-      type: TextLogType.command,
-      newParagraph: true,
-    );
-    log.info(
-      'docker compose up --build --detach',
-      type: TextLogType.command,
-    );
-    log.info(
-      'dart run bin/main.dart --apply-migrations',
-      type: TextLogType.command,
-    );
-  }
+  log.info(
+    'serverpod start',
+    type: TextLogType.command,
+    newParagraph: true,
+  );
 
   log.info(' ');
 }
