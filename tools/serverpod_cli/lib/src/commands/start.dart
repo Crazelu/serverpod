@@ -14,6 +14,7 @@ import 'package:serverpod_cli/src/commands/start/file_watcher.dart';
 import 'package:serverpod_cli/src/commands/start/kernel_compiler.dart';
 import 'package:serverpod_cli/src/commands/start/mcp_server.dart';
 import 'package:serverpod_cli/src/commands/start/mcp_socket.dart';
+import 'package:serverpod_cli/src/commands/start/native_assets_builder.dart';
 import 'package:serverpod_cli/src/commands/start/server_process.dart';
 import 'package:serverpod_cli/src/commands/start/tui/app.dart';
 import 'package:serverpod_cli/src/commands/start/tui/event_handler.dart';
@@ -39,8 +40,8 @@ enum StartOption<V> implements OptionDefinition<V> {
     FlagOption(
       argName: 'watch',
       argAbbrev: 'w',
-      defaultsTo: false,
-      negatable: false,
+      defaultsTo: true,
+      negatable: true,
       helpText: 'Watch for changes and hot reload the server.',
     ),
   ),
@@ -148,12 +149,15 @@ class StartCommand extends ServerpodCommand<StartOption> {
     );
 
     // Load generator config (also resolves server directory).
-    GeneratorConfig config;
+    late final GeneratorConfig config;
     try {
-      config = await GeneratorConfig.load(
-        serverRootDir: directory,
-        interactive: interactive,
-      );
+      await log.progress('Loading project configuration', () async {
+        config = await GeneratorConfig.load(
+          serverRootDir: directory,
+          interactive: interactive,
+        );
+        return true;
+      });
     } catch (e) {
       log.error('$e');
       throw ExitException(ServerpodCommand.commandInvokedCannotExecute);
@@ -170,7 +174,10 @@ class StartCommand extends ServerpodCommand<StartOption> {
     // Start Docker Compose services if needed.
     var startedDocker = false;
     if (docker) {
-      startedDocker = await _ensureDockerServices(serverDir);
+      await log.progress('Starting Docker services', () async {
+        startedDocker = await _ensureDockerServices(serverDir);
+        return true;
+      });
     }
 
     try {
@@ -251,6 +258,16 @@ class StartCommand extends ServerpodCommand<StartOption> {
       entryPoint: entryPoint,
       outputDill: dillPath,
     );
+
+    final nativeAssetsBuilder = _createNativeAssetsBuilder(
+      serverDir: serverDir,
+      serverpodToolDir: serverpodToolDir,
+      dartExecutable: compiler.dartExecutable,
+    );
+    if (!await _runHooksFor(nativeAssetsBuilder, compiler)) {
+      throw ExitException.error();
+    }
+
     await compiler.start();
 
     try {
@@ -272,6 +289,42 @@ class StartCommand extends ServerpodCommand<StartOption> {
     } finally {
       await compiler.dispose();
     }
+  }
+}
+
+/// Constructs a [NativeAssetsBuilder] for the server at [serverDir]. The
+/// builder discovers `package_config.json` itself (walking up to a workspace
+/// root if needed).
+NativeAssetsBuilder _createNativeAssetsBuilder({
+  required String serverDir,
+  required String serverpodToolDir,
+  required String dartExecutable,
+}) {
+  return NativeAssetsBuilder(
+    dartExecutable: dartExecutable,
+    serverDir: serverDir,
+    outputDir: p.join(serverpodToolDir, 'native_assets'),
+  );
+}
+
+/// Runs build hooks via [builder] and applies the result to [compiler].
+/// Returns false on hook failure (an error has been logged).
+///
+/// Wraps [NativeAssetsBuilder.applyTo] for the start.dart paths that don't
+/// care about the restart-distinction (initial-build callers and the IDE
+/// reload callback). The watch-loop and migration paths switch on the
+/// outcome directly to read [NativeAssetsApplySuccess.restarted].
+Future<bool> _runHooksFor(
+  NativeAssetsBuilder builder,
+  KernelCompiler compiler,
+) async {
+  final outcome = await builder.applyTo(compiler);
+  switch (outcome) {
+    case NativeAssetsApplySuccess():
+      return true;
+    case NativeAssetsApplyFailure(:final message):
+      log.error(message);
+      return false;
   }
 }
 
@@ -361,7 +414,11 @@ Future<int> _runWatchMode({
   // Ensure generated code is up to date (runs concurrently with analyzers).
   final allSources = await enumerateSourceFiles(config);
   if (!await isGenerationUpToDate(config, allSources)) {
-    final analyzers = await analyzersFuture;
+    late final Analyzers analyzers;
+    await log.progress('Initializing analyzers', () async {
+      analyzers = await analyzersFuture;
+      return true;
+    });
     final genResult = await analyzeAndGenerate(
       analyzers: analyzers,
       config: config,
@@ -426,6 +483,7 @@ Future<int> _startWatchSession({
   required bool noFes,
 }) async {
   KernelCompiler? compiler;
+  NativeAssetsBuilder? nativeAssetsBuilder;
   ServerProcessFactory? serverProcessFactory;
   ServerProcess initialServerProcess;
 
@@ -439,38 +497,56 @@ Future<int> _startWatchSession({
       enableVmService: true,
       vmServiceInfoFile: vmServiceInfoFile,
     );
-    await serverProcess.start();
-    await serverProcess.connectToVmService();
+    await log.progress('Starting server', () async {
+      await serverProcess.start();
+      await serverProcess.connectToVmService();
+      return true;
+    });
     initialServerProcess = serverProcess;
   } else {
     // Set up incremental compiler.
     final entryPoint = p.join(serverDir, 'bin', 'main.dart');
     final initialDill = p.join(serverpodToolDir, 'server.dill');
-    compiler = KernelCompiler(
+    final localCompiler = KernelCompiler(
       entryPoint: entryPoint,
       outputDill: initialDill,
     );
-    await compiler.start();
+
+    final localBuilder = _createNativeAssetsBuilder(
+      serverDir: serverDir,
+      serverpodToolDir: serverpodToolDir,
+      dartExecutable: localCompiler.dartExecutable,
+    );
+    if (!await _runHooksFor(localBuilder, localCompiler)) {
+      return 1;
+    }
+
+    await localCompiler.start();
 
     // Compile if the cached dill is stale. The FES starts in the background
     // (KernelCompiler gates compile/reset calls internally until start
     // completes), so if the dill is up to date we boot immediately.
-    if (!await compiler.compileIfNeeded(watcher.watchPaths)) {
-      await compiler.dispose();
+    if (!await localCompiler.compileIfNeeded(watcher.watchPaths)) {
+      await localCompiler.dispose();
       log.error('Initial compilation failed.');
       return 1;
     }
 
-    // IDE reload callback: compile incrementally and return the dill path.
+    // IDE reload callback: re-run native build hooks (manifest may have
+    // changed since the last cycle if the developer edited C source), then
+    // compile and return the dill path.
     Future<String?> onReloadRequested() async {
-      await compiler!.reset();
+      if (!await _runHooksFor(localBuilder, localCompiler)) {
+        return null;
+      }
+      await localCompiler.reset();
       final result = await compileWithProgress(
         'Compiling server (IDE reload)',
-        compiler,
+        localCompiler,
         rejectOnFailure: true,
       );
       if (result == null) return null;
-      compiler.accept();
+      localCompiler.accept();
       return result.dillOutput ?? initialDill;
     }
 
@@ -482,7 +558,7 @@ Future<int> _startWatchSession({
           final serverProcess = ServerProcess(
             serverDir: serverDir,
             serverArgs: [...serverArgs, ...extraArgs],
-            dartExecutable: compiler!.dartExecutable,
+            dartExecutable: localCompiler.dartExecutable,
             enableVmService: true,
             vmServiceInfoFile: vmServiceInfoFile,
             onReloadRequested: onReloadRequested,
@@ -492,11 +568,19 @@ Future<int> _startWatchSession({
           return serverProcess;
         };
 
-    initialServerProcess = await serverProcessFactory(initialDill);
+    late final ServerProcess started;
+    await log.progress('Starting server', () async {
+      started = await serverProcessFactory!(initialDill);
+      return true;
+    });
+    initialServerProcess = started;
+    compiler = localCompiler;
+    nativeAssetsBuilder = localBuilder;
   }
 
   final session = WatchSession(
     compiler: compiler,
+    nativeAssetsBuilder: nativeAssetsBuilder,
     generate: generate,
     createServer: serverProcessFactory,
     initialServer: initialServerProcess,
@@ -721,6 +805,17 @@ Future<void> _runTuiBackend({
       entryPoint: entryPoint,
       outputDill: initialDill,
     );
+
+    final nativeAssetsBuilder = _createNativeAssetsBuilder(
+      serverDir: serverDir,
+      serverpodToolDir: serverpodToolDir,
+      dartExecutable: compiler.dartExecutable,
+    );
+    if (!await _runHooksFor(nativeAssetsBuilder, compiler)) {
+      onExitCode(1);
+      return;
+    }
+
     await compiler.start();
 
     if (!await compiler.compileIfNeeded(
@@ -737,8 +832,15 @@ Future<void> _runTuiBackend({
     final stdoutSink = TuiLogSink(holder);
     final stderrSink = TuiLogSink(holder);
 
-    // IDE reload callback.
+    // IDE reload callback. Re-runs build hooks first so manifest changes
+    // (e.g. edited C source) are picked up before recompiling.
     Future<String?> onReloadRequested() async {
+      if (!await _runHooksFor(
+        nativeAssetsBuilder,
+        compiler,
+      )) {
+        return null;
+      }
       await compiler.reset();
       final result = await compileWithProgress(
         'Compiling server (IDE reload)',
@@ -791,6 +893,7 @@ Future<void> _runTuiBackend({
     // Create watch session.
     final session = WatchSession(
       compiler: compiler,
+      nativeAssetsBuilder: nativeAssetsBuilder,
       generate: (affectedPaths, requirements) async {
         return analyzeAndGenerate(
           analyzers: await analyzersFuture,
@@ -902,24 +1005,46 @@ Future<void> _runTuiBackend({
 ({String message, bool isError}) _describeCreateMigration(
   CreateMigrationOutcome outcome, {
   required String forceHint,
+  bool isServer = true,
 }) {
+  final label = '${isServer ? 'Server' : 'Client'} migration';
   return switch (outcome) {
     CreateMigrationCreated(:final versionName, :final migrationDirectory) => (
-      message: 'Migration "$versionName" created at $migrationDirectory.',
+      message: '$label "$versionName" created at $migrationDirectory.',
       isError: false,
     ),
     CreateMigrationNoChanges() => (
-      message: 'No schema changes detected; no migration created.',
+      message: '$label skipped. No changes detected.',
       isError: false,
     ),
     CreateMigrationAborted() => (
-      message: 'Migration aborted due to warnings. $forceHint',
+      message: '$label aborted due to warnings. $forceHint',
       isError: true,
     ),
     CreateMigrationFailed(:final message) => (
       message: message,
       isError: true,
     ),
+    CreateMigrationServerClientCreated(
+      :final serverResult,
+      :final clientResult,
+    ) =>
+      () {
+        final serverDescription = _describeCreateMigration(
+          serverResult,
+          forceHint: forceHint,
+          isServer: true,
+        );
+        final clientDescription = _describeCreateMigration(
+          clientResult,
+          forceHint: forceHint,
+          isServer: false,
+        );
+        return (
+          message: '${serverDescription.message}\n${clientDescription.message}',
+          isError: serverDescription.isError || clientDescription.isError,
+        );
+      }(),
   };
 }
 
