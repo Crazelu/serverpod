@@ -56,14 +56,20 @@ extension ServerpodTemplateTypeExtension on ServerpodTemplateType {
   bool get isMini => this == ServerpodTemplateType.mini;
 }
 
+/// Holds error messages to be flushed at a later time.
+/// This is typically used to replay logs to the terminal
+/// after exiting the tui's alternate screen
+/// but before killing the Dart process.
 List<String> _errorBuffer = [];
 
+/// Logs a message with error level and adds it to the error buffer.
 void _logError(String message) {
   _errorBuffer.add(message);
   log.error(message);
 }
 
-void flushErrors() {
+/// Log all messages in the error buffer with error level.
+void flushPerformCreateErrors() {
   _errorBuffer.forEach(log.error);
   _errorBuffer.clear();
 }

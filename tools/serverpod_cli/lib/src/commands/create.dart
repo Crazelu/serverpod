@@ -12,6 +12,7 @@ import 'package:serverpod_cli/src/create/template_context.dart';
 import 'package:serverpod_cli/src/downloads/resource_manager.dart';
 import 'package:serverpod_cli/src/runner/serverpod_command.dart';
 import 'package:serverpod_cli/src/runner/serverpod_command_runner.dart';
+import 'package:serverpod_cli/src/util/command_line_tools.dart';
 import 'package:serverpod_cli/src/util/serverpod_cli_logger.dart';
 
 enum CreateOption<V> implements OptionDefinition<V> {
@@ -180,6 +181,9 @@ class CreateCommand extends ServerpodCommand<CreateOption> {
     required ServerpodTemplateType template,
     required bool projectCreated,
   }) async {
+    CommandLineTools.flushErrors();
+    flushPerformCreateErrors();
+
     if (projectCreated) {
       log.info(
         'Serverpod project created.',
@@ -188,8 +192,6 @@ class CreateCommand extends ServerpodCommand<CreateOption> {
       );
 
       if (template.isServer) logStartInstructions();
-    } else {
-      flushErrors();
     }
 
     await log.flush();
