@@ -29,8 +29,6 @@ import 'package:yaml_edit/yaml_edit.dart';
 import 'copier.dart';
 import 'template_renderer.dart';
 
-typedef CreateResult = ({bool success, String relativeServerPath});
-
 enum ServerpodTemplateType {
   mini('mini'),
   server('server'),
