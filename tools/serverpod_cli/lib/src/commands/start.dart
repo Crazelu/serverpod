@@ -26,6 +26,7 @@ import 'package:serverpod_cli/src/commands/watcher.dart';
 import 'package:serverpod_cli/src/generator/analyzers.dart';
 import 'package:serverpod_cli/src/generator/generation_staleness.dart';
 import 'package:serverpod_cli/src/generator/isolated_analyzers.dart';
+import 'package:serverpod_cli/src/migrations/cli_migration_runner.dart';
 import 'package:serverpod_cli/src/migrations/create_migration_action.dart';
 import 'package:serverpod_cli/src/runner/serverpod_command.dart';
 import 'package:serverpod_cli/src/runner/serverpod_command_runner.dart';
@@ -550,23 +551,19 @@ Future<int> _startWatchSession({
       return result.dillOutput ?? initialDill;
     }
 
-    serverProcessFactory =
-        (
-          String dillPath, {
-          List<String> extraArgs = const [],
-        }) async {
-          final serverProcess = ServerProcess(
-            serverDir: serverDir,
-            serverArgs: [...serverArgs, ...extraArgs],
-            dartExecutable: localCompiler.dartExecutable,
-            enableVmService: true,
-            vmServiceInfoFile: vmServiceInfoFile,
-            onReloadRequested: onReloadRequested,
-          );
-          await serverProcess.start(dillPath: dillPath);
-          await serverProcess.connectToVmService();
-          return serverProcess;
-        };
+    serverProcessFactory = (String dillPath) async {
+      final serverProcess = ServerProcess(
+        serverDir: serverDir,
+        serverArgs: serverArgs,
+        dartExecutable: localCompiler.dartExecutable,
+        enableVmService: true,
+        vmServiceInfoFile: vmServiceInfoFile,
+        onReloadRequested: onReloadRequested,
+      );
+      await serverProcess.start(dillPath: dillPath);
+      await serverProcess.connectToVmService();
+      return serverProcess;
+    };
 
     late final ServerProcess started;
     await log.progress('Starting server', () async {
@@ -578,6 +575,7 @@ Future<int> _startWatchSession({
     nativeAssetsBuilder = localBuilder;
   }
 
+  final runMode = runModeFromServerArgs(serverArgs);
   final session = WatchSession(
     compiler: compiler,
     nativeAssetsBuilder: nativeAssetsBuilder,
@@ -585,6 +583,11 @@ Future<int> _startWatchSession({
     createServer: serverProcessFactory,
     initialServer: initialServerProcess,
     generatedDirPaths: generatedDirPaths,
+    applyMigrationsAction: () => applyPendingMigrations(
+      serverDir: serverDir,
+      runMode: runMode,
+      moduleName: config.name,
+    ),
   );
 
   // Start MCP socket server for AI agent integration.
@@ -874,34 +877,30 @@ Future<void> _runTuiBackend({
     // Server process factory. Subscribes to VM service extension events
     // on each new server process so restarts pick up the new connection.
     ServerProcessFactory serverProcessFactory;
-    serverProcessFactory =
-        (
-          String dillPath, {
-          List<String> extraArgs = const [],
-        }) async {
-          final serverProcess = ServerProcess(
-            serverDir: serverDir,
-            serverArgs: [...serverArgs, ...extraArgs],
-            dartExecutable: compiler.dartExecutable,
-            enableVmService: true,
-            vmServiceInfoFile: vmServiceInfoFile,
-            onReloadRequested: onReloadRequested,
-            stdoutSink: stdoutSink,
-            stderrSink: stderrSink,
-          );
-          await serverProcess.start(dillPath: dillPath);
-          await serverProcess.connectToVmService();
+    serverProcessFactory = (String dillPath) async {
+      final serverProcess = ServerProcess(
+        serverDir: serverDir,
+        serverArgs: serverArgs,
+        dartExecutable: compiler.dartExecutable,
+        enableVmService: true,
+        vmServiceInfoFile: vmServiceInfoFile,
+        onReloadRequested: onReloadRequested,
+        stdoutSink: stdoutSink,
+        stderrSink: stderrSink,
+      );
+      await serverProcess.start(dillPath: dillPath);
+      await serverProcess.connectToVmService();
 
-          final vmService = serverProcess.vmService;
-          if (vmService != null) {
-            await vmService.streamListen('Extension');
-            vmService.onExtensionEvent.listen(
-              (event) => handleServerLogEvent(holder, event),
-            );
-          }
+      final vmService = serverProcess.vmService;
+      if (vmService != null) {
+        await vmService.streamListen('Extension');
+        vmService.onExtensionEvent.listen(
+          (event) => handleServerLogEvent(holder, event),
+        );
+      }
 
-          return serverProcess;
-        };
+      return serverProcess;
+    };
 
     late final ServerProcess initialServer;
     await log.progress('Starting server', () async {
@@ -910,6 +909,7 @@ Future<void> _runTuiBackend({
     });
 
     // Create watch session.
+    final runMode = runModeFromServerArgs(serverArgs);
     final session = WatchSession(
       compiler: compiler,
       nativeAssetsBuilder: nativeAssetsBuilder,
@@ -925,6 +925,11 @@ Future<void> _runTuiBackend({
       createServer: serverProcessFactory,
       initialServer: initialServer,
       generatedDirPaths: config.generatedDirPaths,
+      applyMigrationsAction: () => applyPendingMigrations(
+        serverDir: serverDir,
+        runMode: runMode,
+        moduleName: config.name,
+      ),
     );
 
     // Start MCP socket server.

@@ -126,6 +126,40 @@ void main() {
   late Set<String> generatedFiles;
   late WatchSession session;
 
+  WatchSession buildSession({
+    required KernelCompiler compiler,
+    required ServerProcess initialServer,
+    ServerProcessFactory? createServer,
+    GenerateAction? generate,
+    ApplyMigrationsAction? applyMigrationsAction,
+    ProtocolChangeClassifier? classifyProtocolChange,
+  }) {
+    return WatchSession(
+      compiler: compiler,
+      generate:
+          generate ??
+          (affectedPaths, requirements) async {
+            generateCalls.add(affectedPaths);
+            return (
+              success: generateSuccess,
+              generatedFiles: generatedFiles,
+            );
+          },
+      createServer:
+          createServer ??
+          (String dillPath) async {
+            factoryCalls.add('createServer:$dillPath');
+            return factoryServer;
+          },
+      initialServer: initialServer,
+      generatedDirPaths: {'/generated'},
+      applyMigrationsAction:
+          applyMigrationsAction ?? () async => const <String>[],
+      classifyProtocolChange:
+          classifyProtocolChange ?? defaultProtocolChangeClassifier,
+    );
+  }
+
   setUp(() {
     compiler = _FakeCompiler();
     server = _FakeServer();
@@ -135,24 +169,7 @@ void main() {
     generateSuccess = true;
     generatedFiles = {};
 
-    session = WatchSession(
-      compiler: compiler,
-      generate: (affectedPaths, requirements) async {
-        generateCalls.add(affectedPaths);
-        return (
-          success: generateSuccess,
-          generatedFiles: generatedFiles,
-        );
-      },
-      createServer:
-          (String dillPath, {List<String> extraArgs = const []}) async {
-            final suffix = extraArgs.isEmpty ? '' : '(${extraArgs.join(',')})';
-            factoryCalls.add('createServer:$dillPath$suffix');
-            return factoryServer;
-          },
-      initialServer: server,
-      generatedDirPaths: {'/generated'},
-    );
+    session = buildSession(compiler: compiler, initialServer: server);
   });
 
   group('Given static-only file changes and VM service connected', () {
@@ -621,67 +638,6 @@ void main() {
     );
   });
 
-  group('Given applyMigration is called and compilation succeeds', () {
-    test(
-      'when applyMigration is called, '
-      'then it does a full compile, stops the server, '
-      'and creates a new server with --apply-migrations',
-      () async {
-        await session.applyMigration();
-
-        expect(compiler.calls, ['reset', 'compile', 'accept']);
-        expect(server.calls, ['stop']);
-        expect(factoryCalls, [
-          'createServer:/out.dill(--apply-migrations)',
-        ]);
-      },
-    );
-  });
-
-  group('Given applyMigration is called and compilation fails', () {
-    setUp(() {
-      compiler.nextCompileResult = _failResult();
-    });
-
-    test(
-      'when applyMigration is called, '
-      'then it throws and does not restart the server',
-      () async {
-        await expectLater(
-          session.applyMigration(),
-          throwsA(isA<StateError>()),
-        );
-
-        expect(compiler.calls, ['reset', 'compile', 'reject']);
-        expect(server.calls, isEmpty);
-        expect(factoryCalls, isEmpty);
-      },
-    );
-  });
-
-  group('Given applyMigration is called twice', () {
-    test(
-      'when called twice, '
-      'then each call passes --apply-migrations independently',
-      () async {
-        await session.applyMigration();
-
-        // The factory always returns factoryServer, which is now the
-        // current server. Clear call logs and call again.
-        factoryCalls.clear();
-        compiler.calls.clear();
-
-        await session.applyMigration();
-
-        expect(compiler.calls, ['reset', 'compile', 'accept']);
-        expect(factoryServer.calls, ['stop']);
-        expect(factoryCalls, [
-          'createServer:/out.dill(--apply-migrations)',
-        ]);
-      },
-    );
-  });
-
   group('Given applyMigration is called after dispose', () {
     test(
       'when applyMigration is called, '
@@ -699,6 +655,120 @@ void main() {
             ),
           ),
         );
+      },
+    );
+  });
+
+  group('Given applyMigration is called with an in-place action', () {
+    late List<String> Function() appliedVersions;
+    late int actionCalls;
+    late Completer<List<String>>? gate;
+    late WatchSession inPlaceSession;
+
+    setUp(() {
+      appliedVersions = () => ['20251030_120000_user'];
+      actionCalls = 0;
+      gate = null;
+
+      inPlaceSession = buildSession(
+        compiler: compiler,
+        initialServer: server,
+        applyMigrationsAction: () async {
+          actionCalls++;
+          final localGate = gate;
+          if (localGate != null) return localGate.future;
+          return appliedVersions();
+        },
+      );
+    });
+
+    test(
+      'when the action returns versions, '
+      'then it runs the action and leaves the pod alone',
+      () async {
+        await inPlaceSession.applyMigration();
+
+        expect(actionCalls, 1);
+        expect(compiler.calls, isEmpty);
+        expect(server.calls, isEmpty);
+        expect(factoryCalls, isEmpty);
+      },
+    );
+
+    test(
+      'when the action returns an empty list, '
+      'then it succeeds (already up to date)',
+      () async {
+        appliedVersions = () => const [];
+
+        await inPlaceSession.applyMigration();
+
+        expect(actionCalls, 1);
+        expect(compiler.calls, isEmpty);
+        expect(server.calls, isEmpty);
+      },
+    );
+
+    test(
+      'when the action throws, '
+      'then the error propagates and state returns to idle',
+      () async {
+        appliedVersions = () => throw StateError('boom');
+
+        await expectLater(
+          inPlaceSession.applyMigration(),
+          throwsA(
+            isA<StateError>().having((e) => e.message, 'message', 'boom'),
+          ),
+        );
+
+        // Same session: a follow-up call must reach the action rather
+        // than hit the in-flight latch.
+        appliedVersions = () => const [];
+        await inPlaceSession.applyMigration();
+        expect(actionCalls, 2);
+      },
+    );
+
+    test(
+      'when applyMigration is called after dispose, '
+      'then it throws a StateError without invoking the action',
+      () async {
+        await inPlaceSession.dispose();
+
+        expect(
+          inPlaceSession.applyMigration,
+          throwsA(
+            isA<StateError>().having(
+              (e) => e.message,
+              'message',
+              contains('disposed'),
+            ),
+          ),
+        );
+        expect(actionCalls, 0);
+      },
+    );
+
+    test(
+      'when applyMigration is called twice, '
+      'then the calls serialize via _pending',
+      () async {
+        gate = Completer<List<String>>();
+
+        final firstCall = inPlaceSession.applyMigration();
+        // Second call queues behind the first.
+        final secondCall = inPlaceSession.applyMigration();
+
+        // Yield so any eager work runs.
+        await Future<void>.delayed(Duration.zero);
+        expect(actionCalls, 1, reason: 'second call must wait for first');
+
+        gate!.complete(['v1']);
+        await firstCall;
+        await secondCall;
+
+        expect(actionCalls, 2);
       },
     );
   });
@@ -744,17 +814,14 @@ void main() {
         classifierServer = _FakeServer();
         classifierGenerateCalls = [];
 
-        classifierSession = WatchSession(
+        classifierSession = buildSession(
           compiler: classifierCompiler,
+          initialServer: classifierServer,
           generate: (affectedPaths, requirements) async {
             classifierGenerateCalls.add(affectedPaths);
             return (success: true, generatedFiles: <String>{});
           },
-          createServer:
-              (String dillPath, {List<String> extraArgs = const []}) async =>
-                  classifierServer,
-          initialServer: classifierServer,
-          generatedDirPaths: {'/generated'},
+          createServer: (String dillPath) async => classifierServer,
           classifyProtocolChange: (_) async => false,
         );
       });
@@ -810,17 +877,14 @@ void main() {
         classifierServer = _FakeServer();
         classifierGenerateCalls = [];
 
-        classifierSession = WatchSession(
+        classifierSession = buildSession(
           compiler: classifierCompiler,
+          initialServer: classifierServer,
           generate: (affectedPaths, requirements) async {
             classifierGenerateCalls.add(affectedPaths);
             return (success: true, generatedFiles: <String>{});
           },
-          createServer:
-              (String dillPath, {List<String> extraArgs = const []}) async =>
-                  classifierServer,
-          initialServer: classifierServer,
-          generatedDirPaths: {'/generated'},
+          createServer: (String dillPath) async => classifierServer,
           classifyProtocolChange: (_) async => true,
         );
       });

@@ -9,6 +9,7 @@ import 'package:serverpod_cli/src/commands/start/kernel_compiler.dart';
 import 'package:serverpod_cli/src/commands/start/native_assets_builder.dart';
 import 'package:serverpod_cli/src/commands/start/server_process.dart';
 import 'package:serverpod_cli/src/generator/analyzers.dart';
+import 'package:serverpod_cli/src/migrations/cli_migration_runner.dart';
 import 'package:serverpod_cli/src/util/serverpod_cli_logger.dart';
 
 /// Runs code generation for the given affected file paths.
@@ -24,14 +25,7 @@ typedef GenerateAction =
 
 /// Creates a new server process, starts it, connects VM service,
 /// and returns it ready for use.
-///
-/// [extraArgs] are appended to the server args for this invocation only
-/// (e.g. `--apply-migrations` for a one-shot migration).
-typedef ServerProcessFactory =
-    Future<ServerProcess> Function(
-      String dillPath, {
-      List<String> extraArgs,
-    });
+typedef ServerProcessFactory = Future<ServerProcess> Function(String dillPath);
 
 /// The lifecycle state of a [WatchSession].
 ///
@@ -44,7 +38,7 @@ enum SessionState {
   /// The server is being restarted due to a hot reload failure.
   restarting,
 
-  /// The server is being restarted with `--apply-migrations`.
+  /// Migrations are being applied against the live database.
   applyingMigration,
 
   /// The session has been disposed. No further operations are expected.
@@ -94,6 +88,13 @@ final _endpointOrFutureCallRegex = RegExp(
   r'\bextends\s+(?:\w*Endpoint|FutureCall)\b',
 );
 
+/// Action invoked by [WatchSession.applyMigration].
+///
+/// Runs migrations against the live database without restarting the
+/// pod. Returns the list of versions applied (empty if already up to
+/// date). Throws on failure.
+typedef ApplyMigrationsAction = Future<List<String>> Function();
+
 class WatchSession {
   final KernelCompiler? _compiler;
   final NativeAssetsBuilder? _nativeAssetsBuilder;
@@ -101,6 +102,7 @@ class WatchSession {
   final ServerProcessFactory? _createServer;
   final Set<String> _generatedDirPaths;
   final ProtocolChangeClassifier _classifyProtocolChange;
+  final ApplyMigrationsAction _applyMigrationsAction;
 
   final Completer<int> _done = Completer<int>();
 
@@ -114,7 +116,15 @@ class WatchSession {
 
   /// Serializes restart and migration operations. Each operation chains onto
   /// the previous one via [_pending], so concurrent calls execute in order.
+  /// Always use [_chain] to update.
   Future<void> _pending = Future.value();
+
+  /// Queues [body] behind [_pending].
+  Future<void> _chain(Future<void> Function() body) {
+    final task = _pending.then((_) => body());
+    _pending = task.catchError((_) {}); // ensure errors don't block queue..
+    return task; // .. but raise to caller
+  }
 
   final StreamController<void> _vmServiceUriChangesController =
       StreamController<void>.broadcast();
@@ -128,13 +138,15 @@ class WatchSession {
     required Set<String> generatedDirPaths,
     ProtocolChangeClassifier classifyProtocolChange =
         defaultProtocolChangeClassifier,
+    required ApplyMigrationsAction applyMigrationsAction,
   }) : _compiler = compiler,
        _nativeAssetsBuilder = nativeAssetsBuilder,
        _generate = generate,
        _createServer = createServer,
        _server = initialServer,
        _generatedDirPaths = generatedDirPaths,
-       _classifyProtocolChange = classifyProtocolChange {
+       _classifyProtocolChange = classifyProtocolChange,
+       _applyMigrationsAction = applyMigrationsAction {
     assert(
       (compiler == null) == (createServer == null),
       'compiler and createServer must both be provided or both be null.',
@@ -384,86 +396,44 @@ class WatchSession {
     if (compiler == null) {
       throw StateError('Cannot force reload in --no-fes mode.');
     }
-    _pending = _pending.then(
-      (_) => _compileAndReload(
+    return _chain(
+      () => _compileAndReload(
         dartFiles: const {},
         packageConfigChanged: false,
         forceFullCompile: true,
       ),
     );
-    return _pending;
   }
 
-  /// Restarts the server with `--apply-migrations` (one-shot).
+  /// Applies pending database migrations.
   ///
-  /// If another restart or migration is in progress, this call waits for it
-  /// to finish before proceeding. Throws a [StateError] if the session has
-  /// been disposed or the compiler is not available (--no-fes mode). Throws
-  /// on compilation failure so the caller (MCP server) can report the error.
+  /// Migrations are applied via the [ApplyMigrationsAction] supplied at
+  /// construction time (typically a CLI-side runner that connects to
+  /// the database directly), and the running pod is left in place -
+  /// hot reload covers any model code changes.
+  ///
+  /// If another restart or migration is in progress, this call waits
+  /// for it to finish before proceeding. Throws a [StateError] if the
+  /// session has been disposed.
   Future<void> applyMigration() {
     if (_state == SessionState.disposed) {
       throw StateError('Session has been disposed.');
     }
-
-    final createServer = _createServer;
-    final compiler = _compiler;
-    if (compiler == null || createServer == null) {
-      throw StateError(
-        'Cannot apply migrations in --no-fes mode. '
-        'Restart the server manually with --apply-migrations.',
-      );
-    }
-
-    _pending = _pending.then((_) => _applyMigration(compiler, createServer));
-    return _pending;
-  }
-
-  Future<void> _applyMigration(
-    KernelCompiler compiler,
-    ServerProcessFactory createServer,
-  ) async {
-    if (_state == SessionState.disposed) {
-      throw StateError('Session has been disposed.');
-    }
-
-    _state = SessionState.applyingMigration;
-    try {
-      // Re-run native build hooks first; if the manifest changed the
-      // restart they trigger replaces the explicit reset() below.
-      var restartedByHooks = false;
-      final builder = _nativeAssetsBuilder;
-      if (builder != null) {
-        switch (await builder.applyTo(compiler)) {
-          case NativeAssetsApplyFailure(:final message):
-            throw StateError('$message Migration not applied.');
-          case NativeAssetsApplySuccess(:final restarted):
-            restartedByHooks = restarted;
+    return _chain(() async {
+      // The session may have been disposed while this call was queued.
+      if (_state == SessionState.disposed) {
+        throw StateError('Session has been disposed.');
+      }
+      _state = SessionState.applyingMigration;
+      try {
+        final applied = await _applyMigrationsAction();
+        log.info(formatAppliedMigrations(applied));
+      } finally {
+        if (_state == SessionState.applyingMigration) {
+          _state = SessionState.idle;
         }
       }
-
-      // Full compile so we have a complete kernel for the new process.
-      if (!restartedByHooks) await compiler.reset();
-      final result = await compileWithProgress(
-        'Compiling server',
-        compiler,
-        rejectOnFailure: true,
-      );
-      if (result == null) {
-        throw StateError('Compilation failed. Migration not applied.');
-      }
-      compiler.accept();
-
-      await _server.stop();
-      _server = await createServer(
-        result.dillOutput!,
-        extraArgs: ['--apply-migrations'],
-      );
-      _monitorExit(_server);
-      _trackVmServiceUri(_server);
-      log.info('Server restarted with --apply-migrations.');
-    } finally {
-      _state = SessionState.idle;
-    }
+    });
   }
 
   Future<void> _restartServer(String dillPath) async {
@@ -475,7 +445,9 @@ class WatchSession {
       _trackVmServiceUri(_server);
       log.info(serverRestarted);
     } finally {
-      _state = SessionState.idle;
+      if (_state == SessionState.restarting) {
+        _state = SessionState.idle;
+      }
     }
   }
 
