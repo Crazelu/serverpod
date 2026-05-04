@@ -1,4 +1,4 @@
-import 'package:serverpod_cli/src/commands/start/tui/bounded_queue_list.dart';
+import 'package:serverpod_cli/src/commands/tui/bounded_queue_list.dart';
 import 'package:test/test.dart';
 
 void main() {

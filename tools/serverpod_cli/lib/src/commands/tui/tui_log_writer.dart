@@ -1,21 +1,20 @@
+import 'package:serverpod_cli/src/commands/tui/app_state_holder.dart';
+import 'package:serverpod_cli/src/commands/tui/state.dart';
 import 'package:serverpod_shared/log.dart';
-
-import 'app.dart';
-import 'state.dart';
 
 /// A [LogWriter] that routes log entries and scopes to the TUI state.
 ///
 /// Before the TUI is ready, log entries are buffered and flushed once
-/// [attach] is called with the [AppStateHolder].
+/// [attach] is called with the [ServerpodAppStateHolder].
 ///
 /// Scopes map to tracked operations with spinners. Log entries appear
 /// in the "Log Messages" tab.
 class TuiLogWriter extends LogWriter {
-  AppStateHolder? _holder;
+  ServerpodAppStateHolder? _holder;
   final List<LogEntry> _buffer = [];
 
   /// Attach to the TUI state holder. Flushes any buffered messages.
-  void attach(AppStateHolder holder) {
+  void attach(ServerpodAppStateHolder holder) {
     _holder = holder;
     if (_buffer.isNotEmpty) {
       holder.state.logHistory.addAll(_buffer);

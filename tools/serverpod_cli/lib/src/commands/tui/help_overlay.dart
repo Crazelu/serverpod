@@ -1,11 +1,19 @@
 import 'package:nocterm/nocterm.dart';
+import 'package:serverpod_cli/src/commands/tui/serverpod_theme.dart';
 
-import 'serverpod_theme.dart';
+typedef HelpOverlayBindings = List<(String, List<(String, String)>)>;
 
 /// Help overlay showing all keybindings.
-class HelpOverlay extends StatelessComponent {
-  const HelpOverlay({super.key});
+class HelpOverlay extends StatefulComponent {
+  const HelpOverlay({super.key, this.bindings});
 
+  final HelpOverlayBindings? bindings;
+
+  @override
+  State<StatefulComponent> createState() => _HelpOverlayState();
+}
+
+class _HelpOverlayState extends State<HelpOverlay> {
   static const _bindings = [
     (
       'Navigation',
@@ -41,11 +49,20 @@ class HelpOverlay extends StatelessComponent {
     ),
   ];
 
+  final _scrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
   @override
   Component build(BuildContext context) {
     final st = ServerpodTheme.of(context);
 
     final theme = TuiTheme.of(context);
+    final effectiveBindings = component.bindings ?? _bindings;
 
     return Center(
       child: SizedBox(
@@ -68,32 +85,48 @@ class HelpOverlay extends StatelessComponent {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                for (final (section, bindings) in _bindings) ...[
-                  Text(
-                    section,
-                    style: TextStyle(
-                      color: st.activeTab,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  for (final (key, desc) in bindings)
-                    Row(
+                Expanded(
+                  child: Scrollbar(
+                    controller: _scrollController,
+                    thumbVisibility: true,
+                    child: ListView(
+                      controller: _scrollController,
                       children: [
-                        SizedBox(
-                          width: 24,
-                          child: Text(
-                            '  $key',
+                        for (final (section, bindings)
+                            in effectiveBindings) ...[
+                          Text(
+                            section,
                             style: TextStyle(
-                              color: theme.onSurface,
-                              fontWeight: FontWeight.dim,
+                              color: st.activeTab,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
-                        ),
-                        Text(desc, style: TextStyle(color: theme.onSurface)),
+                          for (final (key, desc) in bindings)
+                            Row(
+                              children: [
+                                SizedBox(
+                                  width: 24,
+                                  child: Text(
+                                    '  $key',
+                                    style: TextStyle(
+                                      color: theme.onSurface,
+                                      fontWeight: FontWeight.dim,
+                                    ),
+                                  ),
+                                ),
+                                Text(
+                                  desc,
+                                  style: TextStyle(color: theme.onSurface),
+                                ),
+                              ],
+                            ),
+                          const SizedBox(height: 1),
+                        ],
                       ],
                     ),
-                  const SizedBox(height: 1),
-                ],
+                  ),
+                ),
+                const SizedBox(height: 1),
                 Text(
                   'Press H or Esc to close',
                   style: TextStyle(

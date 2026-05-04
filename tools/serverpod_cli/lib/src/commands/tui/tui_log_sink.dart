@@ -1,14 +1,14 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'app.dart';
+import 'package:serverpod_cli/src/commands/tui/app_state_holder.dart';
 
 /// An [IOSink] implementation that captures server stdout/stderr output
 /// and routes it to the TUI's "Raw Output" tab.
 class TuiLogSink implements IOSink {
   TuiLogSink(this._holder);
 
-  final AppStateHolder _holder;
+  final ServerpodAppStateHolder _holder;
   final StringBuffer _lineBuffer = StringBuffer();
 
   @override

@@ -2,17 +2,17 @@ import 'dart:convert';
 
 import 'package:serverpod_cli/src/commands/start/tui/app.dart';
 import 'package:serverpod_cli/src/commands/start/tui/state.dart';
-import 'package:serverpod_cli/src/commands/start/tui/tui_log_sink.dart';
+import 'package:serverpod_cli/src/commands/tui/tui_log_sink.dart';
 import 'package:test/test.dart';
 
 void main() {
   late ServerWatchState state;
-  late AppStateHolder holder;
+  late StartAppStateHolder holder;
   late TuiLogSink sink;
 
   setUp(() {
     state = ServerWatchState();
-    holder = AppStateHolder(state);
+    holder = StartAppStateHolder(state);
     sink = TuiLogSink(holder);
   });
 

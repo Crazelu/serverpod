@@ -2,9 +2,9 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:nocterm/nocterm.dart';
+import 'package:serverpod_cli/src/commands/tui/shimmer.dart';
 
 import 'logo.dart';
-import 'shimmer.dart';
 
 /// Splash screen showing the Serverpod logo and ASCII art title
 /// with shimmer effect, plus a subtitle with gradient on "ultimate".

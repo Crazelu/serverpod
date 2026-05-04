@@ -40,15 +40,15 @@ class Button extends StatelessComponent {
     super.key,
     required this.name,
     required this.activationChar,
-    required this.activationKey,
+    required this.activationKeys,
     required this.onActivate,
     this.enabled = true,
-  });
+  }) : assert(activationKeys == const [], 'activationKeys can not be empty');
 
   final String name;
   final String activationChar;
-  final LogicalKey activationKey;
-  final VoidCallback onActivate;
+  final List<LogicalKey> activationKeys;
+  final void Function(LogicalKey) onActivate;
   final bool enabled;
 
   @override
@@ -58,8 +58,8 @@ class Button extends StatelessComponent {
     return Focusable(
       focused: enabled,
       onKeyEvent: (event) {
-        if (event.logicalKey == activationKey) {
-          onActivate();
+        if (activationKeys.contains(event.logicalKey)) {
+          onActivate(event.logicalKey);
           return true;
         }
         return false;
@@ -225,6 +225,120 @@ class TrackedOperationWidget extends StatelessComponent {
         const Text('  '),
         const SizedBox(width: 14),
         Expanded(child: Text('${operation.label}...')),
+      ],
+    );
+  }
+}
+
+// -- LogViewerWidget --
+
+/// Renders structured log entries with active tracked operations
+/// stacked at the bottom.
+class LogViewerWidget extends StatelessComponent {
+  const LogViewerWidget({
+    super.key,
+    required this.state,
+    required this.scrollController,
+    this.header,
+  });
+
+  final ServerpodState state;
+  final ScrollController scrollController;
+  final Component? header;
+
+  @override
+  Component build(BuildContext context) {
+    final items = state.logHistory;
+
+    return Stack(
+      children: [
+        Column(
+          children: [
+            Expanded(
+              child: SelectionArea(
+                onSelectionCompleted: (text) {
+                  if (text.isNotEmpty) ClipboardManager.copy(text);
+                },
+                child: Scrollbar(
+                  controller: scrollController,
+                  thumbVisibility: true,
+                  child: ListView.builder(
+                    controller: scrollController,
+                    reverse: true,
+                    keyboardScrollable: false,
+                    itemCount: items.length,
+                    itemBuilder: (context, index) {
+                      final item = items[items.length - 1 - index];
+                      if (item is LogEntry) {
+                        return LogMessageWidget(
+                          key: ValueKey(index),
+                          entry: item,
+                        );
+                      }
+                      if (item is CompletedOperation) {
+                        return CompletedOperationWidget(
+                          key: ValueKey(index),
+                          operation: item,
+                        );
+                      }
+                      return const SizedBox.shrink();
+                    },
+                  ),
+                ),
+              ),
+            ),
+            // Pinned active operations
+            if (state.activeOperations.isNotEmpty) ...[
+              for (final op in state.activeOperations.values)
+                TrackedOperationWidget(
+                  key: ValueKey(op.id),
+                  operation: op,
+                ),
+            ],
+          ],
+        ),
+        ?header,
+      ],
+    );
+  }
+}
+
+// -- RadioButton --
+
+/// Renders a radio button component
+class RadioButton extends StatelessComponent {
+  const RadioButton({
+    required this.label,
+    required this.focused,
+    required this.value,
+    this.enabled = true,
+  });
+
+  final bool value;
+  final bool focused;
+  final String label;
+
+  /// When false, the option is shown dimmed and must not receive focus
+  /// in navigation logic.
+  final bool enabled;
+
+  @override
+  Component build(BuildContext context) {
+    final st = ServerpodTheme.of(context);
+    final indicator = value ? '◉' : '○';
+    final Color? color = enabled ? null : st.subtleDivider;
+    final style = TextStyle(
+      color: color,
+      fontWeight: enabled
+          ? (focused ? FontWeight.normal : FontWeight.dim)
+          : FontWeight.dim,
+    );
+
+    return Row(
+      children: [
+        Text(indicator, style: style),
+        const SizedBox(width: 2),
+        Text(label, style: style),
       ],
     );
   }

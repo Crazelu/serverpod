@@ -19,9 +19,9 @@ import 'package:serverpod_cli/src/commands/start/server_process.dart';
 import 'package:serverpod_cli/src/commands/start/tui/app.dart';
 import 'package:serverpod_cli/src/commands/start/tui/event_handler.dart';
 import 'package:serverpod_cli/src/commands/start/tui/state.dart';
-import 'package:serverpod_cli/src/commands/start/tui/tui_log_sink.dart';
-import 'package:serverpod_cli/src/commands/start/tui/tui_log_writer.dart';
 import 'package:serverpod_cli/src/commands/start/watch_session.dart';
+import 'package:serverpod_cli/src/commands/tui/tui_log_sink.dart';
+import 'package:serverpod_cli/src/commands/tui/tui_log_writer.dart';
 import 'package:serverpod_cli/src/commands/watcher.dart';
 import 'package:serverpod_cli/src/generator/analyzers.dart';
 import 'package:serverpod_cli/src/generator/generation_staleness.dart';
@@ -705,13 +705,11 @@ Future<int> _runWithTui({
   required List<String> serverArgs,
   required bool? interactive,
 }) async {
-  final holder = AppStateHolder(
-    ServerWatchState(),
-  );
+  final holder = StartAppStateHolder(ServerWatchState());
   var exitCode = 0;
   var backendStarted = false;
 
-  void onReady(AppStateHolder h) {
+  void onReady(StartAppStateHolder h) {
     if (backendStarted) return;
     backendStarted = true;
 
@@ -729,31 +727,14 @@ Future<int> _runWithTui({
   }
 
   // Block on the TUI.
-  await runApp(
-    NoctermApp(
-      child: Builder(
-        builder: (context) {
-          var themeData = TuiTheme.of(context);
-          return TuiTheme(
-            data: themeData.copyWith(
-              background: Color.defaultColor,
-            ),
-            child: ServerpodWatchApp(
-              holder: holder,
-              onReady: onReady,
-            ),
-          );
-        },
-      ),
-    ),
-  );
+  await runApp(ServerpodWatchApp(holder: holder, onReady: onReady));
 
   return exitCode;
 }
 
 /// Backend logic that runs after the TUI is mounted and ready.
 Future<void> _runTuiBackend({
-  required AppStateHolder holder,
+  required StartAppStateHolder holder,
   required Configuration<StartOption> commandConfig,
   required bool watch,
   required List<String> serverArgs,

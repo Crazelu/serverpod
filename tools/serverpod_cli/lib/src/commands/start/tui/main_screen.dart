@@ -1,10 +1,11 @@
 import 'package:nocterm/nocterm.dart' hide LogEntry;
+import 'package:serverpod_cli/src/commands/tui/components.dart';
+import 'package:serverpod_cli/src/commands/tui/serverpod_theme.dart';
+import 'package:serverpod_cli/src/commands/tui/state.dart';
 import 'package:serverpod_shared/log.dart';
 
-import 'components.dart';
-import 'help_overlay.dart';
+import '../../tui/help_overlay.dart';
 import 'loading_screen.dart';
-import 'serverpod_theme.dart';
 import 'state.dart';
 
 /// Main screen shown after startup completes.
@@ -179,44 +180,54 @@ class MainScreen extends StatelessComponent {
         Button(
           name: 'Hot Reload',
           activationChar: 'R',
-          activationKey: LogicalKey.keyR,
-          onActivate: onHotReload ?? () {},
+          activationKeys: const [LogicalKey.keyR],
+          onActivate: (_) {
+            onHotReload?.call();
+          },
           enabled: actionsEnabled && onHotReload != null,
         ),
         const SizedBox(width: 2),
         Button(
           name: 'Create Migration',
           activationChar: 'M',
-          activationKey: LogicalKey.keyM,
-          onActivate: onCreateMigration ?? () {},
+          activationKeys: const [LogicalKey.keyM],
+          onActivate: (_) {
+            onCreateMigration?.call();
+          },
           enabled: actionsEnabled && onCreateMigration != null,
         ),
         const SizedBox(width: 2),
         Button(
           name: 'Apply Migration',
           activationChar: 'A',
-          activationKey: LogicalKey.keyA,
-          onActivate: onApplyMigration ?? () {},
+          activationKeys: const [LogicalKey.keyA],
+          onActivate: (_) {
+            onApplyMigration?.call();
+          },
           enabled: actionsEnabled && onApplyMigration != null,
         ),
         const SizedBox(width: 2),
         Button(
           name: 'Help',
           activationChar: 'H',
-          activationKey: LogicalKey.keyH,
-          onActivate: onToggleHelp ?? () {},
+          activationKeys: const [LogicalKey.keyH],
+          onActivate: (_) {
+            onToggleHelp?.call();
+          },
           enabled: onToggleHelp != null,
         ),
         const SizedBox(width: 2),
         Button(
           name: 'Quit',
           activationChar: 'Q',
-          activationKey: LogicalKey.keyQ,
-          onActivate:
-              onQuit ??
-              () {
-                shutdownApp(0);
-              },
+          activationKeys: const [LogicalKey.keyQ],
+          onActivate: (_) {
+            if (onQuit != null) {
+              onQuit?.call();
+            } else {
+              shutdownApp(0);
+            }
+          },
         ),
       ],
     );

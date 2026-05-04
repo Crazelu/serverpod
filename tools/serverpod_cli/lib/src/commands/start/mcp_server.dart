@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:dart_mcp/server.dart';
-import 'package:serverpod_cli/src/commands/start/tui/state.dart';
+import 'package:serverpod_cli/src/commands/tui/state.dart';
 import 'package:serverpod_cli/src/generated/version.dart';
 import 'package:serverpod_shared/log.dart';
 
