@@ -7,6 +7,7 @@ import 'package:nocterm/nocterm.dart';
 import 'package:serverpod_cli/src/commands/create/tui/app.dart';
 import 'package:serverpod_cli/src/commands/create/tui/state.dart';
 import 'package:serverpod_cli/src/commands/create/tui/state_holder.dart';
+import 'package:serverpod_cli/src/commands/tui/run_app.dart';
 import 'package:serverpod_cli/src/commands/tui/terminal_backend.dart';
 import 'package:serverpod_cli/src/commands/tui/tui_log_writer.dart';
 import 'package:serverpod_cli/src/create/create.dart';
@@ -232,7 +233,7 @@ class CreateCommand extends ServerpodCommand<CreateOption> {
 
     String? projectPath;
 
-    await runApp(
+    await runServerpodApp(
       backend: ServerpodTerminalBackend(
         preExit: () => _preExit(
           template: template,
