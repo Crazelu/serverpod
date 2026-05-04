@@ -61,14 +61,6 @@ enum CreateOption<V> implements OptionDefinition<V> {
           'Can also be specified as the first argument.',
       mandatory: true,
     ),
-  ),
-  tui(
-    FlagOption(
-      argName: 'tui',
-      defaultsTo: true,
-      helpText:
-          'Show interactive terminal UI. Automatically disabled in CI environments.',
-    ),
   )
   ;
 
@@ -109,7 +101,6 @@ class CreateCommand extends ServerpodCommand<CreateOption> {
         : commandConfig.value(CreateOption.template);
     var force = commandConfig.value(CreateOption.force);
     var name = commandConfig.value(CreateOption.name);
-    var useTui = commandConfig.value(CreateOption.tui) && !ci.isCI;
 
     // Get interactive flag from global configuration
     final interactive = serverpodRunner.globalConfiguration.optionalValue(
@@ -143,12 +134,14 @@ class CreateCommand extends ServerpodCommand<CreateOption> {
       }
     }
 
-    if (useTui && !template.isMini) {
+    final useTui = (interactive ?? true) && !ci.isCI;
+
+    if (useTui) {
       await _performCreateWithTui(
         name,
         template,
         force,
-        interactive: interactive,
+        interactive: true,
       );
       return;
     }

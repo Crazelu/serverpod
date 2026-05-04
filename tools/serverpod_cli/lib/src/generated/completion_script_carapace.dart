@@ -49,10 +49,6 @@ commands:
       --mini: "Shortcut for --template mini."
       -t, --template=: "Template to use when creating a new project"
       -n, --name=!: "The name of the project to create.\nCan also be specified as the first argument."
-      --tui: "Show interactive terminal UI. Automatically disabled in CI environments."
-      --no-tui: "Show interactive terminal UI. Automatically disabled in CI environments."
-    exclusiveFlags:
-      - [tui, no-tui]
     completion:
       flag:
         template: ["mini", "server", "module"]
