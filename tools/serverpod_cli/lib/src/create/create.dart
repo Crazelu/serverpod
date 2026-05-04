@@ -81,6 +81,7 @@ Future<String?> performCreate(
   String name,
   ServerpodTemplateType template,
   bool force, {
+  bool dryRun = false,
   required bool? interactive,
   required TemplateContext context,
 }) async {
@@ -91,6 +92,7 @@ Future<String?> performCreate(
     if (findServerDirectory(Directory.current) != null) {
       return await _performUpgrade(
         template,
+        dryRun: dryRun,
         interactive: interactive,
         context: context,
       );
@@ -120,6 +122,8 @@ Future<String?> performCreate(
     _logError('Project $name already exists.');
     return null;
   }
+
+  if (dryRun) return serverpodDirs.projectDir.path;
 
   if (template == ServerpodTemplateType.module) {
     log.info(
@@ -295,6 +299,7 @@ Future<String?> performCreate(
 /// is returned. Otherwise, a future that resolves to null is returned.
 Future<String?> _performUpgrade(
   ServerpodTemplateType template, {
+  bool dryRun = false,
   required bool? interactive,
   required TemplateContext context,
 }) async {
@@ -314,6 +319,8 @@ Future<String?> _performUpgrade(
     _logError('Could not find a project name in the pubspec.yaml file.');
     return null;
   }
+
+  if (dryRun) return name;
 
   var serverpodDir = ServerpodDirectories(
     name: name,
