@@ -32,6 +32,8 @@ import 'package:serverpod_cli/src/runner/serverpod_command.dart';
 import 'package:serverpod_cli/src/runner/serverpod_command_runner.dart';
 import 'package:serverpod_cli/src/util/file_ex.dart';
 import 'package:serverpod_cli/src/util/serverpod_cli_logger.dart';
+import 'package:serverpod_cli/src/vm_proxy/proxy.dart';
+import 'package:serverpod_cli/src/vm_proxy/serverpod_hooks.dart';
 import 'package:stream_transform/stream_transform.dart';
 import 'package:vm_service/vm_service_io.dart';
 
@@ -187,6 +189,12 @@ class StartCommand extends ServerpodCommand<StartOption> {
 
       // Extract passthrough args (everything after '--').
       final serverArgs = argResults?.rest ?? [];
+
+      await _applyMigrationsOnBoot(
+        serverDir: serverDir,
+        runMode: runModeFromServerArgs(serverArgs),
+        moduleName: config.name,
+      );
 
       if (watch) {
         final exitCode = await _runWatchMode(
@@ -382,6 +390,24 @@ Future<void> _stopDockerServices(String serverDir) async {
   );
 }
 
+/// Applies pending database migrations before the pod starts.
+Future<void> _applyMigrationsOnBoot({
+  required String serverDir,
+  required String runMode,
+  required String moduleName,
+}) async {
+  try {
+    final applied = await applyPendingMigrations(
+      serverDir: serverDir,
+      runMode: runMode,
+      moduleName: moduleName,
+    );
+    log.info(formatAppliedMigrations(applied));
+  } on StateError {
+    // No database configured for this run mode - nothing to apply.
+  }
+}
+
 /// Runs the entire watch-mode loop.
 ///
 /// Analyzers are created once and updated incrementally on each file change,
@@ -398,15 +424,19 @@ Future<int> _runWatchMode({
   final serverpodToolDir = p.join(serverDir, '.dart_tool', 'serverpod');
   final vmServiceInfoFile = p.join(serverpodToolDir, 'vm-service-info.json');
 
-  if (noFes) {
-    // Check if a server is already running by verifying the service info file.
-    final existingUri = await _checkExistingServer(vmServiceInfoFile);
-    if (existingUri != null) {
-      log.info('Existing server found.');
+  // If a server is already running (FES proxy or --no-fes pod), no-op so
+  // the IDE can attach to the existing instance via the unchanged info
+  // file. Stale files are cleaned up by _checkExistingServer.
+  final existingUri = await _checkExistingServer(vmServiceInfoFile);
+  if (existingUri != null) {
+    log.info('Existing server found.');
+    if (noFes) {
       log.info('The Dart VM service is listening on $existingUri');
-      log.info('Server running.');
-      return 0;
+    } else {
+      log.info('VM service proxy listening on $existingUri');
     }
+    log.info('Server running.');
+    return 0;
   }
 
   // Start analyzer initialization in the background.
@@ -487,6 +517,14 @@ Future<int> _startWatchSession({
   NativeAssetsBuilder? nativeAssetsBuilder;
   ServerProcessFactory? serverProcessFactory;
   ServerProcess initialServerProcess;
+  late final WatchSession session;
+  VmServiceProxy? proxy;
+
+  // The user-facing vm-service-info.json receives the proxy's URI instead.
+  // In --no-fes mode there is no proxy, so the pod writes directly to the user path.
+  final podInfoFile = noFes
+      ? vmServiceInfoFile
+      : p.join(serverpodToolDir, 'vm-service-info.pod.json');
 
   if (noFes) {
     // No compiler - the IDE handles compilation and hot reload.
@@ -496,7 +534,7 @@ Future<int> _startWatchSession({
       serverDir: serverDir,
       serverArgs: serverArgs,
       enableVmService: true,
-      vmServiceInfoFile: vmServiceInfoFile,
+      vmServiceInfoFile: podInfoFile,
     );
     await log.progress('Starting server', () async {
       await serverProcess.start();
@@ -533,35 +571,22 @@ Future<int> _startWatchSession({
       return 1;
     }
 
-    // IDE reload callback: re-run native build hooks (manifest may have
-    // changed since the last cycle if the developer edited C source), then
-    // compile and return the dill path.
-    Future<String?> onReloadRequested() async {
-      if (!await _runHooksFor(localBuilder, localCompiler)) {
-        return null;
-      }
-      await localCompiler.reset();
-      final result = await compileWithProgress(
-        'Compiling server (IDE reload)',
-        localCompiler,
-        rejectOnFailure: true,
-      );
-      if (result == null) return null;
-      localCompiler.accept();
-      return result.dillOutput ?? initialDill;
-    }
-
     serverProcessFactory = (String dillPath) async {
       final serverProcess = ServerProcess(
         serverDir: serverDir,
         serverArgs: serverArgs,
         dartExecutable: localCompiler.dartExecutable,
         enableVmService: true,
-        vmServiceInfoFile: vmServiceInfoFile,
-        onReloadRequested: onReloadRequested,
+        vmServiceInfoFile: podInfoFile,
       );
       await serverProcess.start(dillPath: dillPath);
       await serverProcess.connectToVmService();
+      proxy = await _mountOrRetargetProxy(
+        serverProcess: serverProcess,
+        existing: proxy,
+        userInfoFile: vmServiceInfoFile,
+        reload: () => session.forceReload(),
+      );
       return serverProcess;
     };
 
@@ -576,7 +601,7 @@ Future<int> _startWatchSession({
   }
 
   final runMode = runModeFromServerArgs(serverArgs);
-  final session = WatchSession(
+  session = WatchSession(
     compiler: compiler,
     nativeAssetsBuilder: nativeAssetsBuilder,
     generate: generate,
@@ -629,8 +654,52 @@ Future<int> _startWatchSession({
   await fileChangeSub.cancel();
   await mcpSocket?.close();
   await session.dispose();
+  await proxy?.close();
+  if (!noFes) await File(vmServiceInfoFile).deleteIfExists();
 
   return exitCode;
+}
+
+/// Mounts a fresh [VmServiceProxy] in front of [serverProcess] (writing
+/// the proxy's URI to [userInfoFile]), or retargets [existing] in place
+/// when called for a subsequent pod restart so the published proxy URI
+/// stays stable across pod swaps.
+///
+/// Returns the (possibly retargeted) proxy on success, or [existing] when
+/// the pod hasn't published a VM service URI - the watch session keeps
+/// running without an attachable proxy in that case.
+Future<VmServiceProxy?> _mountOrRetargetProxy({
+  required ServerProcess serverProcess,
+  required VmServiceProxy? existing,
+  required String userInfoFile,
+  required Future<void> Function() reload,
+}) async {
+  final podHttp = serverProcess.vmServiceUri;
+  if (podHttp == null) {
+    log.warning(
+      'Pod did not publish a VM service URI; IDE attach will not be '
+      'available for this pod. (Reload, restart, and the rest of the '
+      'watch loop continue to work.)',
+    );
+    return existing;
+  }
+  final podWs = Uri.parse(vmServiceWsUri(podHttp));
+
+  if (existing != null) {
+    await existing.retarget(podWs);
+    return existing;
+  }
+
+  final proxy = VmServiceProxy(
+    upstreamWs: podWs,
+    interceptor: reloadSourcesInterceptor(reload),
+  );
+  await proxy.bind();
+  await File(userInfoFile).writeAsString(
+    jsonEncode({'uri': proxy.httpUri.toString()}),
+  );
+  log.info('VM service proxy listening on ${proxy.httpUri}');
+  return proxy;
 }
 
 /// Listens for SIGINT/SIGTERM and exposes a [future] that completes when
@@ -774,6 +843,25 @@ Future<void> _runTuiBackend({
 
     final serverpodToolDir = p.join(serverDir, '.dart_tool', 'serverpod');
     final vmServiceInfoFile = p.join(serverpodToolDir, 'vm-service-info.json');
+    final podInfoFile = p.join(serverpodToolDir, 'vm-service-info.pod.json');
+
+    // If a server is already running, exit cleanly so the IDE can attach
+    // to the existing instance via the unchanged info file. Stale files
+    // are cleaned up by _checkExistingServer.
+    final existingUri = await _checkExistingServer(vmServiceInfoFile);
+    if (existingUri != null) {
+      log.info('Existing server found.');
+      log.info('VM service proxy listening on $existingUri');
+      onExitCode(0);
+      shutdownApp(0);
+      return;
+    }
+
+    await _applyMigrationsOnBoot(
+      serverDir: serverDir,
+      runMode: runModeFromServerArgs(serverArgs),
+      moduleName: config.name,
+    );
 
     // Start analyzer initialization on a worker isolate in the background.
     final analyzersFuture = IsolatedAnalyzers.create(config);
@@ -835,25 +923,8 @@ Future<void> _runTuiBackend({
     final stdoutSink = TuiLogSink(holder);
     final stderrSink = TuiLogSink(holder);
 
-    // IDE reload callback. Re-runs build hooks first so manifest changes
-    // (e.g. edited C source) are picked up before recompiling.
-    Future<String?> onReloadRequested() async {
-      if (!await _runHooksFor(
-        nativeAssetsBuilder,
-        compiler,
-      )) {
-        return null;
-      }
-      await compiler.reset();
-      final result = await compileWithProgress(
-        'Compiling server (IDE reload)',
-        compiler,
-        rejectOnFailure: true,
-      );
-      if (result == null) return null;
-      compiler.accept();
-      return result.dillOutput ?? initialDill;
-    }
+    late final WatchSession session;
+    VmServiceProxy? proxy;
 
     // Server process factory. Subscribes to VM service extension events
     // on each new server process so restarts pick up the new connection.
@@ -864,8 +935,7 @@ Future<void> _runTuiBackend({
         serverArgs: serverArgs,
         dartExecutable: compiler.dartExecutable,
         enableVmService: true,
-        vmServiceInfoFile: vmServiceInfoFile,
-        onReloadRequested: onReloadRequested,
+        vmServiceInfoFile: podInfoFile,
         stdoutSink: stdoutSink,
         stderrSink: stderrSink,
       );
@@ -880,6 +950,13 @@ Future<void> _runTuiBackend({
         );
       }
 
+      proxy = await _mountOrRetargetProxy(
+        serverProcess: serverProcess,
+        existing: proxy,
+        userInfoFile: vmServiceInfoFile,
+        reload: () => session.forceReload(),
+      );
+
       return serverProcess;
     };
 
@@ -891,7 +968,7 @@ Future<void> _runTuiBackend({
 
     // Create watch session.
     final runMode = runModeFromServerArgs(serverArgs);
-    final session = WatchSession(
+    session = WatchSession(
       compiler: compiler,
       nativeAssetsBuilder: nativeAssetsBuilder,
       generate: (affectedPaths, requirements) async {
@@ -960,6 +1037,8 @@ Future<void> _runTuiBackend({
       await fileChangeSub?.cancel();
       await mcpSocket?.close();
       await session.dispose();
+      await proxy?.close();
+      await File(vmServiceInfoFile).deleteIfExists();
       if (startedDocker) {
         await _stopDockerServices(serverDir);
       }
@@ -995,6 +1074,8 @@ Future<void> _runTuiBackend({
     await fileChangeSub?.cancel();
     await mcpSocket?.close();
     await session.dispose();
+    await proxy?.close();
+    await File(vmServiceInfoFile).deleteIfExists();
   } catch (e, st) {
     // Show the error in the TUI. Keep it open so the user can read it.
     holder.state.showSplash = false;
