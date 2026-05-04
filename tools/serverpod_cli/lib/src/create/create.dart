@@ -81,6 +81,7 @@ Future<String?> performCreate(
   String name,
   ServerpodTemplateType template,
   bool force, {
+  Completer<int>? flutterBuildCompleter,
   bool dryRun = false,
   required bool? interactive,
   required TemplateContext context,
@@ -232,8 +233,9 @@ Future<String?> performCreate(
   }
 
   if (template == ServerpodTemplateType.server) {
+    String skipKey = interactive == true ? 'S' : 'CTRL+C';
     await log.progress(
-      'Building Flutter web app (press CTRL+C to skip).',
+      'Building Flutter web app (press $skipKey to skip).',
       () async {
         final Script? script;
         try {
@@ -261,12 +263,17 @@ Future<String?> performCreate(
             .listen((data) => _logError(data));
         final toErrorLog = IOSink(stderrController);
 
-        final exitCode = await execute(
+        final executionFuture = execute(
           script.command,
           workingDirectory: serverpodDirs.serverDir,
           stdout: toDebugLog,
           stderr: toErrorLog,
         );
+
+        final exitCode = await Future.any([
+          ?flutterBuildCompleter?.future,
+          executionFuture,
+        ]);
 
         return exitCode == 0;
       },

@@ -7,15 +7,17 @@ import 'package:serverpod_cli/src/commands/tui/app.dart';
 class ServerpodCreateApp extends ServerpodApp<CreateAppStateHolder> {
   const ServerpodCreateApp({
     super.key,
+    required super.holder,
     required this.name,
     required this.onCreate,
     required this.onQuit,
-    required super.holder,
+    required this.onSkipFlutterBuild,
   });
 
   final String name;
   final VoidCallback onCreate;
   final VoidCallback onQuit;
+  final VoidCallback onSkipFlutterBuild;
 
   @override
   ServerpodAppState createState() => ServerpodCreateAppState();
@@ -56,6 +58,11 @@ class ServerpodCreateAppState extends ServerpodAppState<ServerpodCreateApp> {
 
   bool _handleKeyEvent(KeyboardEvent event) {
     final state = component.holder.state;
+
+    if (event.logicalKey == LogicalKey.keyS) {
+      component.onSkipFlutterBuild();
+      return true;
+    }
 
     // Dismiss help overlay.
     if (state.showHelp && event.logicalKey == LogicalKey.escape) {
