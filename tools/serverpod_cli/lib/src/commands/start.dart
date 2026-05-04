@@ -20,6 +20,7 @@ import 'package:serverpod_cli/src/commands/start/tui/app.dart';
 import 'package:serverpod_cli/src/commands/start/tui/event_handler.dart';
 import 'package:serverpod_cli/src/commands/start/tui/state.dart';
 import 'package:serverpod_cli/src/commands/start/watch_session.dart';
+import 'package:serverpod_cli/src/commands/tui/run_app.dart';
 import 'package:serverpod_cli/src/commands/tui/tui_log_sink.dart';
 import 'package:serverpod_cli/src/commands/tui/tui_log_writer.dart';
 import 'package:serverpod_cli/src/commands/watcher.dart';
@@ -796,7 +797,7 @@ Future<int> _runWithTui({
   }
 
   // Block on the TUI.
-  await runApp(ServerpodWatchApp(holder: holder, onReady: onReady));
+  await runServerpodApp(ServerpodWatchApp(holder: holder, onReady: onReady));
 
   return exitCode;
 }
