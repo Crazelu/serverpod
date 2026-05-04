@@ -74,7 +74,10 @@ void flushPerformCreateErrors() {
   _errorBuffer.clear();
 }
 
-Future<bool> performCreate(
+/// Creates a project for the provided [template].
+/// If successful, a future that resolves to the project directory path
+/// is returned. Otherwise, a future that resolves to null is returned.
+Future<String?> performCreate(
   String name,
   ServerpodTemplateType template,
   bool force, {
@@ -105,7 +108,7 @@ Future<bool> performCreate(
       'Invalid project name. Project names can only contain letters, numbers, '
       'and underscores.',
     );
-    return false;
+    return null;
   }
 
   var serverpodDirs = ServerpodDirectories(
@@ -115,7 +118,7 @@ Future<bool> performCreate(
   var pubspecFile = File(p.join(serverpodDirs.projectDir.path, 'pubspec.yaml'));
   if (pubspecFile.existsSync()) {
     _logError('Project $name already exists.');
-    return false;
+    return null;
   }
 
   if (template == ServerpodTemplateType.module) {
@@ -273,36 +276,43 @@ Future<bool> performCreate(
       type: TextLogType.success,
     );
 
+    var projectDirPath = p.basename(serverpodDirs.projectDir.path);
+
     if (template == ServerpodTemplateType.server) {
-      logStartInstructions();
+      logStartInstructions(projectDirPath);
     } else if (template == ServerpodTemplateType.mini) {
-      _logMiniStartInstructions();
+      _logMiniStartInstructions(projectDirPath);
     }
+
+    return projectDirPath;
   }
 
-  return success;
+  return null;
 }
 
-Future<bool> _performUpgrade(
+/// Upgrades a server project.
+/// If successful, a future that resolves to the project directory path
+/// is returned. Otherwise, a future that resolves to null is returned.
+Future<String?> _performUpgrade(
   ServerpodTemplateType template, {
   required bool? interactive,
   required TemplateContext context,
 }) async {
   if (template != ServerpodTemplateType.server) {
     _logError('The upgrade command can only be used with server templates.');
-    return false;
+    return null;
   }
 
   var serverDir = findServerDirectory(Directory.current);
   if (serverDir == null) {
     _logError('Could not find a Serverpod project in the current directory.');
-    return false;
+    return null;
   }
 
   var name = await getProjectName(serverDir);
   if (name == null) {
     _logError('Could not find a project name in the pubspec.yaml file.');
-    return false;
+    return null;
   }
 
   var serverpodDir = ServerpodDirectories(
@@ -347,10 +357,11 @@ Future<bool> _performUpgrade(
       type: TextLogType.success,
     );
 
-    logStartInstructions();
+    logStartInstructions(name);
+    return name;
   }
 
-  return success;
+  return null;
 }
 
 /// Parses and renders the template files in the given directory.
@@ -361,7 +372,7 @@ Future<bool> _renderTemplates(Directory dir, TemplateContext context) async {
   });
 }
 
-void _logMiniStartInstructions() {
+void _logMiniStartInstructions(String relativeProjectPath) {
   log.info(
     'All setup. You are ready to rock! 🥳',
     type: TextLogType.header,
@@ -374,6 +385,21 @@ void _logMiniStartInstructions() {
     'Start your Serverpod by running:',
     type: TextLogType.header,
   );
+
+  if (Platform.isWindows) {
+    log.info(
+      'cd .\\$relativeProjectPath\\',
+      type: TextLogType.command,
+      newParagraph: true,
+    );
+  } else {
+    log.info(
+      'cd $relativeProjectPath',
+      type: TextLogType.command,
+      newParagraph: true,
+    );
+  }
+
   log.info(
     'serverpod start',
     type: TextLogType.command,
@@ -383,7 +409,7 @@ void _logMiniStartInstructions() {
   log.info(' ');
 }
 
-void logStartInstructions() {
+void logStartInstructions(String relativeProjectPath) {
   log.info(
     'All setup. You are ready to rock! 🥳',
     type: TextLogType.header,
@@ -396,6 +422,21 @@ void logStartInstructions() {
     'Start your Serverpod by running:',
     type: TextLogType.header,
   );
+
+  if (Platform.isWindows) {
+    log.info(
+      'cd .\\$relativeProjectPath\\',
+      type: TextLogType.command,
+      newParagraph: true,
+    );
+  } else {
+    log.info(
+      'cd $relativeProjectPath',
+      type: TextLogType.command,
+      newParagraph: true,
+    );
+  }
+
   log.info(
     'serverpod start',
     type: TextLogType.command,

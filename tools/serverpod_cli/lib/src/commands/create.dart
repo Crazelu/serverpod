@@ -137,7 +137,7 @@ class CreateCommand extends ServerpodCommand<CreateOption> {
 
     final useTui = (interactive ?? true) && !ci.isCI;
 
-    if (useTui) {
+    if (useTui && !template.isMini) {
       await _performCreateWithTui(
         name,
         template,
@@ -154,13 +154,15 @@ class CreateCommand extends ServerpodCommand<CreateOption> {
       web: true,
     );
 
-    if (!await performCreate(
+    final projectPath = await performCreate(
       name,
       template,
       force,
       interactive: interactive,
       context: context,
-    )) {
+    );
+
+    if (projectPath == null) {
       throw ExitException.error();
     }
   }
@@ -173,25 +175,25 @@ class CreateCommand extends ServerpodCommand<CreateOption> {
     shutdownApp(exitCode);
   }
 
-  /// Flushes success logs if [projectCreated] is true.
-  /// Otherwise, error logs are flushed if any.
+  /// Flushes success logs if [projectPath] is not null.
+  /// Error logs are flushed if any.
   /// This is done when shutting down nocterm but before exiting
   /// the Dart process.
   Future<void> _preExit({
     required ServerpodTemplateType template,
-    required bool projectCreated,
+    String? projectPath,
   }) async {
     CommandLineTools.flushErrors();
     flushPerformCreateErrors();
 
-    if (projectCreated) {
+    if (projectPath != null) {
       log.info(
         'Serverpod project created.',
         newParagraph: true,
         type: TextLogType.success,
       );
 
-      if (template.isServer) logStartInstructions();
+      if (template.isServer) logStartInstructions(projectPath);
     }
 
     await log.flush();
@@ -211,13 +213,13 @@ class CreateCommand extends ServerpodCommand<CreateOption> {
     initializeLoggerWith(ServerpodCliLogger(tuiWriter));
     tuiWriter.attach(holder);
 
-    bool projectCreated = false;
+    String? projectPath;
 
     await runApp(
       backend: ServerpodTerminalBackend(
         preExit: () => _preExit(
           template: template,
-          projectCreated: projectCreated,
+          projectPath: projectPath,
         ),
       ),
       ServerpodCreateApp(
@@ -225,7 +227,7 @@ class CreateCommand extends ServerpodCommand<CreateOption> {
         holder: holder,
         onCreate: () async {
           final context = state.toTemplateContext();
-          projectCreated = await performCreate(
+          projectPath = await performCreate(
             name,
             state.template ?? template,
             force,
@@ -233,7 +235,9 @@ class CreateCommand extends ServerpodCommand<CreateOption> {
             context: context,
           );
 
-          await _shutdownNocterm(projectCreated ? 0 : 1);
+          final success = projectPath != null;
+
+          await _shutdownNocterm(success ? 0 : 1);
         },
         onQuit: () => _shutdownNocterm(1),
       ),

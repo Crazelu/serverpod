@@ -116,13 +116,15 @@ class QuickstartCommand extends ServerpodCommand<QuickstartOption> {
       }
     }
 
-    if (!await performCreate(
+    final projectPath = await performCreate(
       name,
       template,
       force,
       interactive: interactive,
       context: TemplateContext(sqlite: true, web: true),
-    )) {
+    );
+
+    if (projectPath == null) {
       throw ExitException.error();
     }
   }
