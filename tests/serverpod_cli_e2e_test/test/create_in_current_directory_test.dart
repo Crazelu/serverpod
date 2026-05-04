@@ -68,6 +68,12 @@ void main() async {
 
           var allOutput = '${result.stdout}${result.stderr}';
           expect(
+            allOutput.contains('cd $projectName'),
+            isTrue,
+            reason: 'Start instructions should point to the project directory.',
+          );
+
+          expect(
             allOutput.contains('serverpod start'),
             isTrue,
             reason: 'Start instructions should mention serverpod start command',
