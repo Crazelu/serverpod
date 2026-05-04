@@ -124,7 +124,7 @@ Future<String?> performCreate(
     return null;
   }
 
-  if (dryRun) return serverpodDirs.projectDir.path;
+  if (dryRun) return p.basename(serverpodDirs.projectDir.path);
 
   if (template == ServerpodTemplateType.module) {
     log.info(
