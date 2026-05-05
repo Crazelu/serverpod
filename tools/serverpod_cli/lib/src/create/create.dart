@@ -400,16 +400,10 @@ Future<void> _configureMcpServer(String projectDirPath) async {
     "serverpod": {
       "command": "serverpod",
       "args": ["mcp"]
-    }
-  }
-}
-
-''';
-  const vscodeConfig = '''{
-  "servers": {
-    "serverpod": {
-      "command": "serverpod",
-      "args": ["mcp"]
+    },
+    "dart": {
+      "command": "dart",
+      "args": ["mcp-server"]
     }
   }
 }
@@ -418,15 +412,29 @@ Future<void> _configureMcpServer(String projectDirPath) async {
   const codexConfig = '''[mcp_servers.serverpod]
 command = "serverpod"
 args = ["mcp"]
+
+[mcp_servers.dart_mcp]
+command = "dart"
+args = ["mcp-server", "--force-roots-fallback"]
 ''';
 
   await Future.forEach(
-    [antigravityPath, cursorPath, claudePath],
+    [cursorPath, claudePath],
     (path) async {
       await _createFileAndWrite(p.join(projectDirPath, path), genericConfig);
     },
   );
-  await _createFileAndWrite(p.join(projectDirPath, vscodePath), vscodeConfig);
+
+  await _createFileAndWrite(
+    p.join(projectDirPath, antigravityPath),
+    genericConfig.replaceAll(r'"dart":', r'"dart-mcp-server":'),
+  );
+
+  await _createFileAndWrite(
+    p.join(projectDirPath, vscodePath),
+    genericConfig.replaceAll(r'"mcpServers":', r'"servers":'),
+  );
+
   await _createFileAndWrite(p.join(projectDirPath, codexPath), codexConfig);
 }
 

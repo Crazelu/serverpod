@@ -362,7 +362,21 @@ void main() {
           );
         });
 
-        group('has Serverpod MCP server configured', () {
+        group('has Serverpod and Dart MCP servers configured', () {
+          final genericConfig =
+              r'\{\n'
+              r'  \"mcpServers\": \{\n'
+              r'    \"serverpod\": \{\n'
+              r'      \"command\": \"serverpod\",\n'
+              r'      \"args\": \[\"mcp\"\]\n'
+              r'    \},\n'
+              r'    \"dart\": \{\n'
+              r'      \"command\": \"dart\",\n'
+              r'      \"args\": \[\"mcp-server\"\]\n'
+              r'    \}\n'
+              r'  \}\n'
+              r'\}';
+
           test('for Antigravity', () {
             final antigravity = File(
               path.join(
@@ -375,14 +389,7 @@ void main() {
             expect(
               antigravity.readAsStringSync(),
               matches(
-                r'\{\n'
-                r'  \"mcpServers\": \{\n'
-                r'    \"serverpod\": \{\n'
-                r'      \"command\": \"serverpod\",\n'
-                r'      \"args\": \[\"mcp\"\]\n'
-                r'    \}\n'
-                r'  \}\n'
-                r'\}',
+                genericConfig.replaceAll(r'\"dart\":', r'\"dart-mcp-server\":'),
               ),
             );
           });
@@ -397,7 +404,11 @@ void main() {
               matches(
                 r'\[mcp_servers.serverpod\]\n'
                 r'command = \"serverpod\"\n'
-                r'args = \[\"mcp\"\]\n',
+                r'args = \[\"mcp\"\]\n'
+                r'\n'
+                r'\[mcp_servers.dart_mcp\]\n'
+                r'command = \"dart\"\n'
+                r'args = \[\"mcp-server\", \"--force-roots-fallback\"\]',
               ),
             );
           });
@@ -407,19 +418,7 @@ void main() {
               path.join(tempPath, projectName, '.mcp.json'),
             );
             expect(claude.existsSync(), isTrue);
-            expect(
-              claude.readAsStringSync(),
-              matches(
-                r'\{\n'
-                r'  \"mcpServers\": \{\n'
-                r'    \"serverpod\": \{\n'
-                r'      \"command\": \"serverpod\",\n'
-                r'      \"args\": \[\"mcp\"\]\n'
-                r'    \}\n'
-                r'  \}\n'
-                r'\}',
-              ),
-            );
+            expect(claude.readAsStringSync(), matches(genericConfig));
           });
 
           test('for Cursor', () {
@@ -427,19 +426,7 @@ void main() {
               path.join(tempPath, projectName, '.cursor/mcp.json'),
             );
             expect(cursor.existsSync(), isTrue);
-            expect(
-              cursor.readAsStringSync(),
-              matches(
-                r'\{\n'
-                r'  \"mcpServers\": \{\n'
-                r'    \"serverpod\": \{\n'
-                r'      \"command\": \"serverpod\",\n'
-                r'      \"args\": \[\"mcp\"\]\n'
-                r'    \}\n'
-                r'  \}\n'
-                r'\}',
-              ),
-            );
+            expect(cursor.readAsStringSync(), matches(genericConfig));
           });
 
           test('for VSCode', () {
@@ -449,16 +436,7 @@ void main() {
             expect(vscode.existsSync(), isTrue);
             expect(
               vscode.readAsStringSync(),
-              matches(
-                r'\{\n'
-                r'  \"servers\": \{\n'
-                r'    \"serverpod\": \{\n'
-                r'      \"command\": \"serverpod\",\n'
-                r'      \"args\": \[\"mcp\"\]\n'
-                r'    \}\n'
-                r'  \}\n'
-                r'\}',
-              ),
+              matches(genericConfig.replaceAll('mcpServers', 'servers')),
             );
           });
         });
