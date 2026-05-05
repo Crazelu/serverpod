@@ -52,6 +52,8 @@ dependencies:
   serverpod_serialization: 3.5.0-beta.5
   serverpod_service_client: 3.5.0-beta.5
   serverpod_shared: 3.5.0-beta.5
+  # skills must be pinned to 0.2.2 to avoid breaking changes
+  # as the package receives external contribution
   skills: 0.2.2
   source_span: ^1.10.0
   stream_channel: ^2.1.1
