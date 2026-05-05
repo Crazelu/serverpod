@@ -190,6 +190,7 @@ class CreateCommand extends ServerpodCommand<CreateOption> {
   Future<void> _shutdownNocterm([int exitCode = 0]) async {
     await closeLogger();
     initializeLogger();
+    restoreServerpodTerminal();
     shutdownApp(exitCode);
   }
 

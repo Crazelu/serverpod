@@ -1,7 +1,29 @@
 import 'dart:io';
 
 import 'package:nocterm/nocterm.dart';
-import 'package:serverpod_cli/src/commands/tui/terminal_backend.dart';
+
+bool _terminalStateCaptured = false;
+bool _terminalStateRestored = false;
+
+late bool _originalEchoMode;
+late bool _originalLineMode;
+
+void _captureTerminalState() {
+  _originalEchoMode = stdin.echoMode;
+  _originalLineMode = stdin.lineMode;
+  _terminalStateCaptured = true;
+  _terminalStateRestored = false;
+}
+
+/// Restores stdin terminal modes captured by [runServerpodApp].
+///
+/// Safe to call multiple times.
+void restoreServerpodTerminal() {
+  if (!_terminalStateCaptured || _terminalStateRestored) return;
+  stdin.echoMode = _originalEchoMode;
+  stdin.lineMode = _originalLineMode;
+  _terminalStateRestored = true;
+}
 
 /// Run a TUI app with terminal settings restoration.
 ///
@@ -15,27 +37,18 @@ import 'package:serverpod_cli/src/commands/tui/terminal_backend.dart';
 Future<void> runServerpodApp(
   Component app, {
   bool enableHotReload = true,
-  ServerpodTerminalBackend? backend,
+  TerminalBackend? backend,
   void Function()? onShutdownSignal,
 }) async {
-  final effectiveBackend = backend ?? ServerpodTerminalBackend();
-  final originalEchoMode = stdin.echoMode;
-  final originalLineMode = stdin.lineMode;
-
-  void restoreTerminal() {
-    try {
-      stdin.lineMode = originalLineMode;
-      stdin.echoMode = originalEchoMode;
-    } catch (_) {}
-  }
-
-  effectiveBackend.onExit(() => restoreTerminal());
+  _captureTerminalState();
 
   void onShutDownSignalDefault(ProcessSignal _) {
+    restoreServerpodTerminal();
     shutdownApp();
   }
 
   void onShutDownSignalDelegated(ProcessSignal _) {
+    restoreServerpodTerminal();
     onShutdownSignal!.call();
   }
 
@@ -52,9 +65,9 @@ Future<void> runServerpodApp(
     await runApp(
       app,
       enableHotReload: enableHotReload,
-      backend: effectiveBackend,
+      backend: backend,
     );
   } finally {
-    restoreTerminal();
+    restoreServerpodTerminal();
   }
 }

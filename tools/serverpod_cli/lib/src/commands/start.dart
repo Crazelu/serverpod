@@ -770,6 +770,7 @@ Future<int> _runWithTui({
   unawaited(
     shutdown.future.then((code) async {
       await backendFuture;
+      restoreServerpodTerminal();
       shutdownApp(code);
     }),
   );
