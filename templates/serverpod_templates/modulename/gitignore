@@ -6,5 +6,6 @@
 pubspec_overrides.yaml
 
 # Agents
+.dart_skills/
 .agents/
 .claude/
