@@ -392,9 +392,21 @@ Future<void> _configureMcpServer(String projectDirPath) async {
   const antigravityPath = '.gemini/antigravity/mcp_config.json';
   const cursorPath = '.cursor/mcp.json';
   const claudePath = '.mcp.json';
+  const vscodePath = '.vscode/mcp.json';
+  const codexPath = '.codex/config.toml';
 
-  const config = '''{
+  const genericConfig = '''{
   "mcpServers": {
+    "serverpod": {
+      "command": "serverpod",
+      "args": ["mcp"]
+    }
+  }
+}
+
+''';
+  const vscodeConfig = '''{
+  "servers": {
     "serverpod": {
       "command": "serverpod",
       "args": ["mcp"]
@@ -403,18 +415,29 @@ Future<void> _configureMcpServer(String projectDirPath) async {
 }
 ''';
 
+  const codexConfig = '''[mcp_servers.serverpod]
+command = "serverpod"
+args = ["mcp"]
+''';
+
   await Future.forEach(
     [antigravityPath, cursorPath, claudePath],
     (path) async {
-      final file = File(p.join(projectDirPath, path));
-      try {
-        await file.create(recursive: true);
-        await file.writeAsString(config);
-      } on FileSystemException {
-        //
-      }
+      await _createFileAndWrite(p.join(projectDirPath, path), genericConfig);
     },
   );
+  await _createFileAndWrite(p.join(projectDirPath, vscodePath), vscodeConfig);
+  await _createFileAndWrite(p.join(projectDirPath, codexPath), codexConfig);
+}
+
+Future<void> _createFileAndWrite(String path, String content) async {
+  final file = File(path);
+  try {
+    await file.create(recursive: true);
+    await file.writeAsString(content);
+  } on FileSystemException {
+    //
+  }
 }
 
 /// Upgrades a server project.

@@ -11,4 +11,6 @@ pubspec_overrides.yaml
 .claude/
 .gemini/
 .cursor/
+.vscode/mcp.json
+.codex/
 .mcp.json

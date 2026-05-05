@@ -347,74 +347,106 @@ void main() async {
           );
         });
 
-        group(
-          'has Serverpod MCP server configured',
-          () {
-            test('for Antigravity', () {
-              final antigravity = File(
-                path.join(
-                  tempPath,
-                  projectName,
-                  '.gemini/antigravity/mcp_config.json',
-                ),
-              );
-              expect(antigravity.existsSync(), isTrue);
-              expect(
-                antigravity.readAsStringSync(),
-                matches(
-                  r'\{\n'
-                  r'  \"mcpServers\": \{\n'
-                  r'    \"serverpod\": \{\n'
-                  r'      \"command\": \"serverpod\",\n'
-                  r'      \"args\": \[\"mcp\"\]\n'
-                  r'    \}\n'
-                  r'  \}\n'
-                  r'\}',
-                ),
-              );
-            });
+        group('has Serverpod MCP server configured', () {
+          test('for Antigravity', () {
+            final antigravity = File(
+              path.join(
+                tempPath,
+                projectName,
+                '.gemini/antigravity/mcp_config.json',
+              ),
+            );
+            expect(antigravity.existsSync(), isTrue);
+            expect(
+              antigravity.readAsStringSync(),
+              matches(
+                r'\{\n'
+                r'  \"mcpServers\": \{\n'
+                r'    \"serverpod\": \{\n'
+                r'      \"command\": \"serverpod\",\n'
+                r'      \"args\": \[\"mcp\"\]\n'
+                r'    \}\n'
+                r'  \}\n'
+                r'\}',
+              ),
+            );
+          });
 
-            test('for Claude', () {
-              final claude = File(
-                path.join(tempPath, projectName, '.mcp.json'),
-              );
-              expect(claude.existsSync(), isTrue);
-              expect(
-                claude.readAsStringSync(),
-                matches(
-                  r'\{\n'
-                  r'  \"mcpServers\": \{\n'
-                  r'    \"serverpod\": \{\n'
-                  r'      \"command\": \"serverpod\",\n'
-                  r'      \"args\": \[\"mcp\"\]\n'
-                  r'    \}\n'
-                  r'  \}\n'
-                  r'\}',
-                ),
-              );
-            });
+          test('for Codex', () {
+            final codex = File(
+              path.join(tempPath, projectName, '.codex/config.toml'),
+            );
+            expect(codex.existsSync(), isTrue);
+            expect(
+              codex.readAsStringSync(),
+              matches(
+                r'\[mcp_servers.serverpod\]\n'
+                r'command = \"serverpod\"\n'
+                r'args = \[\"mcp\"\]\n',
+              ),
+            );
+          });
 
-            test('for Cursor', () {
-              final cursor = File(
-                path.join(tempPath, projectName, '.cursor/mcp.json'),
-              );
-              expect(cursor.existsSync(), isTrue);
-              expect(
-                cursor.readAsStringSync(),
-                matches(
-                  r'\{\n'
-                  r'  \"mcpServers\": \{\n'
-                  r'    \"serverpod\": \{\n'
-                  r'      \"command\": \"serverpod\",\n'
-                  r'      \"args\": \[\"mcp\"\]\n'
-                  r'    \}\n'
-                  r'  \}\n'
-                  r'\}',
-                ),
-              );
-            });
-          },
-        );
+          test('for Claude', () {
+            final claude = File(
+              path.join(tempPath, projectName, '.mcp.json'),
+            );
+            expect(claude.existsSync(), isTrue);
+            expect(
+              claude.readAsStringSync(),
+              matches(
+                r'\{\n'
+                r'  \"mcpServers\": \{\n'
+                r'    \"serverpod\": \{\n'
+                r'      \"command\": \"serverpod\",\n'
+                r'      \"args\": \[\"mcp\"\]\n'
+                r'    \}\n'
+                r'  \}\n'
+                r'\}',
+              ),
+            );
+          });
+
+          test('for Cursor', () {
+            final cursor = File(
+              path.join(tempPath, projectName, '.cursor/mcp.json'),
+            );
+            expect(cursor.existsSync(), isTrue);
+            expect(
+              cursor.readAsStringSync(),
+              matches(
+                r'\{\n'
+                r'  \"mcpServers\": \{\n'
+                r'    \"serverpod\": \{\n'
+                r'      \"command\": \"serverpod\",\n'
+                r'      \"args\": \[\"mcp\"\]\n'
+                r'    \}\n'
+                r'  \}\n'
+                r'\}',
+              ),
+            );
+          });
+
+          test('for VSCode', () {
+            final vscode = File(
+              path.join(tempPath, projectName, '.vscode/mcp.json'),
+            );
+            expect(vscode.existsSync(), isTrue);
+            expect(
+              vscode.readAsStringSync(),
+              matches(
+                r'\{\n'
+                r'  \"servers\": \{\n'
+                r'    \"serverpod\": \{\n'
+                r'      \"command\": \"serverpod\",\n'
+                r'      \"args\": \[\"mcp\"\]\n'
+                r'    \}\n'
+                r'  \}\n'
+                r'\}',
+              ),
+            );
+          });
+        });
       });
     });
   });
