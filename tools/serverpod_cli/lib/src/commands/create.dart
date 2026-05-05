@@ -234,13 +234,17 @@ class CreateCommand extends ServerpodCommand<CreateOption> {
 
     String? projectPath;
 
-    await runServerpodApp(
-      backend: ServerpodTerminalBackend(
-        preExit: () => _preExit(
-          template: template,
-          projectPath: projectPath,
-        ),
+    final backend = ServerpodTerminalBackend();
+
+    backend.onExit(
+      () => _preExit(
+        template: template,
+        projectPath: projectPath,
       ),
+    );
+
+    await runServerpodApp(
+      backend: backend,
       ServerpodCreateApp(
         name: name,
         holder: holder,

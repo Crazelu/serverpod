@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:nocterm/nocterm.dart';
+import 'package:serverpod_cli/src/commands/tui/terminal_backend.dart';
 
 /// Run a TUI app with terminal settings restoration.
 ///
@@ -14,9 +15,10 @@ import 'package:nocterm/nocterm.dart';
 Future<void> runServerpodApp(
   Component app, {
   bool enableHotReload = true,
-  TerminalBackend? backend,
+  ServerpodTerminalBackend? backend,
   void Function()? onShutdownSignal,
 }) async {
+  final effectiveBackend = backend ?? ServerpodTerminalBackend();
   final originalEchoMode = stdin.echoMode;
   final originalLineMode = stdin.lineMode;
 
@@ -25,8 +27,11 @@ Future<void> runServerpodApp(
     stdin.lineMode = originalLineMode;
   }
 
-  void onShutDownSignalDefault(ProcessSignal _) {
+  effectiveBackend.onExit(() async {
     restoreTerminal();
+  });
+
+  void onShutDownSignalDefault(ProcessSignal _) {
     shutdownApp();
   }
 
@@ -44,7 +49,11 @@ Future<void> runServerpodApp(
   }
 
   try {
-    await runApp(app, enableHotReload: enableHotReload, backend: backend);
+    await runApp(
+      app,
+      enableHotReload: enableHotReload,
+      backend: effectiveBackend,
+    );
   } finally {
     restoreTerminal();
   }
