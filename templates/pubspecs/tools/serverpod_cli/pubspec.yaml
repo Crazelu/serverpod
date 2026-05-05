@@ -51,9 +51,7 @@ dependencies:
   serverpod_serialization: SERVERPOD_VERSION
   serverpod_service_client: SERVERPOD_VERSION
   serverpod_shared: SERVERPOD_VERSION
-  # skills must be pinned to 0.2.2 to avoid breaking changes
-  # as the package receives external contribution
-  skills: 0.2.2
+  skills: ^0.3.0
   source_span: ^1.10.0
   stream_channel: ^2.1.1
   stream_transform: ^2.1.0
