@@ -353,7 +353,7 @@ Future<String?> performCreate(
     if (template == ServerpodTemplateType.server) {
       logStartInstructions(projectDirPath);
     } else if (template == ServerpodTemplateType.mini) {
-      _logMiniStartInstructions(projectDirPath);
+      logMiniStartInstructions(projectDirPath);
     }
 
     return projectDirPath;
@@ -533,7 +533,7 @@ Future<bool> _renderTemplates(Directory dir, TemplateContext context) async {
   });
 }
 
-void _logMiniStartInstructions(String relativeProjectPath) {
+void logMiniStartInstructions(String relativeProjectPath) {
   log.info(
     'All setup. You are ready to rock! 🥳',
     type: TextLogType.header,

@@ -212,6 +212,7 @@ class CreateCommand extends ServerpodCommand<CreateOption> {
       );
 
       if (template.isServer) logStartInstructions(projectPath);
+      if (template.isMini) logMiniStartInstructions(projectPath);
     }
 
     await log.flush();
@@ -238,7 +239,7 @@ class CreateCommand extends ServerpodCommand<CreateOption> {
 
     backend.onExit(
       () => _preExit(
-        template: template,
+        template: state.template ?? template,
         projectPath: projectPath,
       ),
     );
