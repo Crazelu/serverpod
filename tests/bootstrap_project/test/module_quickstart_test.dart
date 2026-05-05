@@ -339,7 +339,7 @@ void main() {
         test('has agent skills installed', () {
           expect(
             Directory(
-              path.join(tempPath, projectName, '.agent', 'skills'),
+              path.join(tempPath, projectName, '.agents', 'skills'),
             ).existsSync(),
             isTrue,
           );
