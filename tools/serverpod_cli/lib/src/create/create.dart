@@ -310,9 +310,27 @@ Future<String?> performCreate(
           stderr: toErrorLog,
         );
 
-        if (!success) _logError('Failed to install agent skills');
+        if (!success) {
+          _logError('Failed to install agent skills');
+          return false;
+        }
+
+        final agentDir = Directory(
+          p.join(serverpodDirs.projectDir.path, '.agent'),
+        );
+        final agentsDir = Directory(
+          p.join(serverpodDirs.projectDir.path, '.agents'),
+        );
+
+        try {
+          await _moveDirectoryContents(agentDir, agentsDir);
+          await agentDir.delete();
+        } on FileSystemException {
+          //
+        }
       } catch (_) {
         _logError('Failed to install agent skills');
+        return false;
       }
       return true;
     });
@@ -337,6 +355,32 @@ Future<String?> performCreate(
   }
 
   return null;
+}
+
+Future<void> _moveDirectoryContents(
+  Directory source,
+  Directory destination,
+) async {
+  if (!await source.exists()) {
+    throw Exception('Source directory does not exist: ${source.path}');
+  }
+
+  // Ensure destination exists
+  if (!await destination.exists()) {
+    await destination.create(recursive: true);
+  }
+
+  await for (final entity in source.list()) {
+    final newPath = p.join(destination.path, p.basename(entity.path));
+
+    if (entity is File) {
+      await entity.rename(newPath);
+    } else if (entity is Directory) {
+      final newDir = await Directory(newPath).create(recursive: true);
+      await _moveDirectoryContents(entity, newDir);
+      await entity.delete();
+    }
+  }
 }
 
 /// Upgrades a server project.
