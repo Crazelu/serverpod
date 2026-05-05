@@ -443,6 +443,75 @@ void main() async {
                 isTrue,
               );
             });
+
+            group(
+              'has Serverpod MCP server configured',
+              () {
+                test('for Antigravity', () {
+                  final antigravity = File(
+                    path.join(
+                      tempPath,
+                      projectName,
+                      '.gemini/antigravity/mcp_config.json',
+                    ),
+                  );
+                  expect(antigravity.existsSync(), isTrue);
+                  expect(
+                    antigravity.readAsStringSync(),
+                    matches(
+                      r'\{\n'
+                      r'  \"mcpServers\": \{\n'
+                      r'    \"serverpod\": \{\n'
+                      r'      \"command\": \"serverpod\",\n'
+                      r'      \"args\": \[\"mcp\"\]\n'
+                      r'    \}\n'
+                      r'  \}\n'
+                      r'\}',
+                    ),
+                  );
+                });
+
+                test('for Claude', () {
+                  final claude = File(
+                    path.join(tempPath, projectName, '.mcp.json'),
+                  );
+                  expect(claude.existsSync(), isTrue);
+                  expect(
+                    claude.readAsStringSync(),
+                    matches(
+                      r'\{\n'
+                      r'  \"mcpServers\": \{\n'
+                      r'    \"serverpod\": \{\n'
+                      r'      \"command\": \"serverpod\",\n'
+                      r'      \"args\": \[\"mcp\"\]\n'
+                      r'    \}\n'
+                      r'  \}\n'
+                      r'\}',
+                    ),
+                  );
+                });
+
+                test('for Cursor', () {
+                  final cursor = File(
+                    path.join(tempPath, projectName, '.cursor/mcp.json'),
+                  );
+                  expect(cursor.existsSync(), isTrue);
+                  expect(
+                    cursor.readAsStringSync(),
+                    matches(
+                      r'\{\n'
+                      r'  \"mcpServers\": \{\n'
+                      r'    \"serverpod\": \{\n'
+                      r'      \"command\": \"serverpod\",\n'
+                      r'      \"args\": \[\"mcp\"\]\n'
+                      r'    \}\n'
+                      r'  \}\n'
+                      r'\}',
+                    ),
+                  );
+                });
+              },
+            );
           });
 
           group('then the .github directory', () {
