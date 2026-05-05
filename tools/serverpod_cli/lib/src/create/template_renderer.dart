@@ -29,7 +29,7 @@ class TemplateRenderer {
     Directory dir,
     TemplateContext context,
   ) async {
-    await for (final entity in dir.list(recursive: false, followLinks: false)) {
+    for (final entity in dir.listSync(recursive: false, followLinks: false)) {
       if (entity is File) {
         await _renderFile(entity, context);
       } else if (entity is Directory) {
