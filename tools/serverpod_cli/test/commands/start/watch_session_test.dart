@@ -88,7 +88,7 @@ class _FakeServer extends Fake implements ServerProcess {
   void simulateExit(int code) => _exitCodeCompleter.complete(code);
 
   @override
-  Future<bool> reload(String dillPath) async {
+  Future<bool> reload(String? dillPath) async {
     calls.add('reload:$dillPath');
     return reloadSuccess;
   }
@@ -147,7 +147,7 @@ void main() {
           },
       createServer:
           createServer ??
-          (String dillPath) async {
+          (String? dillPath) async {
             factoryCalls.add('createServer:$dillPath');
             return factoryServer;
           },
@@ -821,7 +821,7 @@ void main() {
             classifierGenerateCalls.add(affectedPaths);
             return (success: true, generatedFiles: <String>{});
           },
-          createServer: (String dillPath) async => classifierServer,
+          createServer: (String? dillPath) async => classifierServer,
           classifyProtocolChange: (_) async => false,
         );
       });
@@ -884,7 +884,7 @@ void main() {
             classifierGenerateCalls.add(affectedPaths);
             return (success: true, generatedFiles: <String>{});
           },
-          createServer: (String dillPath) async => classifierServer,
+          createServer: (String? dillPath) async => classifierServer,
           classifyProtocolChange: (_) async => true,
         );
       });
@@ -996,6 +996,149 @@ class Counter {
         final result = await defaultProtocolChangeClassifier(file.path);
 
         expect(result, isFalse);
+      },
+    );
+  });
+
+  group('Given a watch session with no compiler', () {
+    late _FakeServer noCompilerServer;
+    late _FakeServer noCompilerFactoryServer;
+    late List<String> noCompilerFactoryCalls;
+    late List<Set<String>> noCompilerGenerateCalls;
+    late Set<String> noCompilerGeneratedFiles;
+    late WatchSession noCompilerSession;
+
+    setUp(() {
+      noCompilerServer = _FakeServer();
+      noCompilerFactoryServer = _FakeServer();
+      noCompilerFactoryCalls = [];
+      noCompilerGenerateCalls = [];
+      noCompilerGeneratedFiles = {};
+
+      noCompilerSession = WatchSession(
+        generate: (affectedPaths, requirements) async {
+          noCompilerGenerateCalls.add(affectedPaths);
+          return (success: true, generatedFiles: noCompilerGeneratedFiles);
+        },
+        createServer: (String? dillPath) async {
+          noCompilerFactoryCalls.add('createServer:$dillPath');
+          return noCompilerFactoryServer;
+        },
+        initialServer: noCompilerServer,
+        generatedDirPaths: {'/generated'},
+        applyMigrationsAction: () async => const <String>[],
+      );
+    });
+
+    test(
+      'when a dart file changes, '
+      'then it runs codegen and triggers reload without compiling',
+      () async {
+        final event = FileChangeEvent(dartFiles: {'/lib/a.dart'});
+
+        await noCompilerSession.handleFileChange(event);
+
+        expect(noCompilerGenerateCalls, [
+          {'/lib/a.dart'},
+        ]);
+        expect(noCompilerServer.calls, ['reload:null']);
+      },
+    );
+
+    test(
+      'when only static files change, '
+      'then it notifies static change without reloading or generating',
+      () async {
+        final event = FileChangeEvent(
+          dartFiles: {},
+          staticFilesChanged: true,
+        );
+
+        await noCompilerSession.handleFileChange(event);
+
+        expect(noCompilerServer.calls, ['notifyStaticChange']);
+        expect(noCompilerGenerateCalls, isEmpty);
+      },
+    );
+
+    test(
+      'when forceReload is called, '
+      'then it triggers reload without compiling',
+      () async {
+        await noCompilerSession.forceReload();
+
+        expect(noCompilerServer.calls, ['reload:null']);
+      },
+    );
+
+    test(
+      'when forceReload is called and reload returns false, '
+      'then it does not throw',
+      () async {
+        noCompilerServer.reloadSuccess = false;
+
+        await noCompilerSession.forceReload();
+
+        expect(noCompilerServer.calls, ['reload:null']);
+      },
+    );
+
+    test(
+      'when forceReload is called and the VM service is not connected, '
+      'then it skips reload',
+      () async {
+        noCompilerServer.isVmServiceConnected = false;
+
+        await noCompilerSession.forceReload();
+
+        expect(noCompilerServer.calls, isEmpty);
+      },
+    );
+
+    test(
+      'when applyMigration is called, '
+      'then it runs the in-place action and leaves the pod alone',
+      () async {
+        await noCompilerSession.applyMigration();
+
+        expect(noCompilerServer.calls, isEmpty);
+        expect(noCompilerFactoryCalls, isEmpty);
+      },
+    );
+
+    test(
+      'when dispose is called, '
+      'then it stops the server (no compiler to dispose)',
+      () async {
+        await noCompilerSession.dispose();
+
+        expect(noCompilerServer.calls, ['stop']);
+      },
+    );
+  });
+
+  group('Given a watch session with no compiler and no factory', () {
+    late _FakeServer noFactoryServer;
+    late WatchSession noFactorySession;
+
+    setUp(() {
+      noFactoryServer = _FakeServer();
+      noFactorySession = WatchSession(
+        generate: (affectedPaths, requirements) async =>
+            (success: true, generatedFiles: <String>{}),
+        initialServer: noFactoryServer,
+        generatedDirPaths: {'/generated'},
+        applyMigrationsAction: () async => const <String>[],
+      );
+    });
+
+    test(
+      'when forceReload is called, '
+      'then it triggers reload via the existing server',
+      () async {
+        await noFactorySession.forceReload();
+
+        expect(noFactoryServer.calls, ['reload:null']);
       },
     );
   });

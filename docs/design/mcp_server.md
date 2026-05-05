@@ -140,9 +140,9 @@ Validates Unix socket support, instantiates `ServerpodMcpBridge`, scans + starts
 
 In `_startWatchSession()` and `_runTuiBackend()` (`start.dart`), the runner-side `McpSocketServer` is constructed with `project: config.name`. The `apply_migrations` callback is wired to `WatchSession.applyMigration`; the `create_migration` callback is a closure over `createMigrationAction(config: ...)` (the shared helper also used by the `serverpod create-migration` CLI command and the TUI "Create Migration" button); `hot_reload` is `WatchSession.forceReload`; `tail_logs` reads from `holder.state.logHistory` in the TUI path. The socket is closed on shutdown (signal, TUI quit, or session exit), which removes the file from the shared dir.
 
-### One-shot migration flag
+### Live migration apply
 
-`WatchSession.applyMigration()` does a full compile, stops the server, and creates a new server with `extraArgs: ['--apply-migrations']`. The method throws on failure (compilation error, already in progress, `--no-fes` mode) so the MCP server can report errors to the client.
+`WatchSession.applyMigration()` connects to the database directly via the CLI-side `applyPendingMigrations` runner and applies pending migrations against the live schema; the running pod is left in place, since hot reload picks up any model code changes. The call serializes through the same chain as restart and reload (so a migration cannot interleave with a recompile), and throws on failure (database error, session disposed) so the MCP server can report errors to the client. The same path runs unconditionally on `serverpod start` boot - the MCP tool covers the mid-session case where new migrations land while the pod is already up.
 
 ## Design Decisions
 
