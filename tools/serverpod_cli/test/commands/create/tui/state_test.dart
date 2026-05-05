@@ -21,6 +21,7 @@ void main() {
           containsAll([
             ServerpodCreateConfig.database,
             ServerpodCreateConfig.redis,
+            ServerpodCreateConfig.skills,
           ]),
         );
         expect(
@@ -42,6 +43,7 @@ void main() {
           expect(context.postgres, isTrue);
           expect(context.sqlite, isFalse);
           expect(context.web, isFalse);
+          expect(context.skills, isTrue);
         },
       );
 
@@ -70,15 +72,7 @@ void main() {
       test('when created then defaults are correct', () {
         expect(state.focusedConfigIndex, 0);
         expect(state.creatingProject, false);
-        expect(
-          state.configValues,
-          containsAll([
-            ServerpodCreateConfig.database,
-            ServerpodCreateConfig.redis,
-            ServerpodCreateConfig.web,
-            ServerpodCreateConfig.auth,
-          ]),
-        );
+
         expect(
           state.getStateFor(ServerpodCreateConfig.database)?.focusedOptionIndex,
           0,
@@ -93,6 +87,10 @@ void main() {
         );
         expect(
           state.getStateFor(ServerpodCreateConfig.auth)?.focusedOptionIndex,
+          0,
+        );
+        expect(
+          state.getStateFor(ServerpodCreateConfig.skills)?.focusedOptionIndex,
           0,
         );
       });
@@ -119,6 +117,7 @@ void main() {
               ServerpodCreateConfig.redis,
               ServerpodCreateConfig.web,
               ServerpodCreateConfig.auth,
+              ServerpodCreateConfig.skills,
             ]),
           );
         },
@@ -136,6 +135,7 @@ void main() {
               ServerpodCreateConfig.template,
               ServerpodCreateConfig.database,
               ServerpodCreateConfig.redis,
+              ServerpodCreateConfig.skills,
             ]),
           );
         },
@@ -149,7 +149,10 @@ void main() {
 
           expect(
             state.configValues,
-            containsAllInOrder([ServerpodCreateConfig.template]),
+            containsAllInOrder([
+              ServerpodCreateConfig.template,
+              ServerpodCreateConfig.skills,
+            ]),
           );
         },
       );
@@ -163,6 +166,7 @@ void main() {
           expect(context.postgres, isTrue);
           expect(context.sqlite, isFalse);
           expect(context.web, isTrue);
+          expect(context.skills, true);
         },
       );
 

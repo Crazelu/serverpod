@@ -1,3 +1,5 @@
+// ignore_for_file: implementation_imports
+
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -24,6 +26,9 @@ import 'package:serverpod_cli/src/util/pubspec_helpers.dart';
 import 'package:serverpod_cli/src/util/serverpod_cli_logger.dart';
 import 'package:serverpod_cli/src/util/string_validators.dart';
 import 'package:serverpod_shared/serverpod_shared.dart';
+import 'package:skills/src/commands/get_skills.dart';
+import 'package:skills/src/core/workspace_resolver.dart';
+import 'package:skills/src/ide/ide.dart';
 import 'package:yaml_edit/yaml_edit.dart';
 
 import 'copier.dart';
@@ -276,6 +281,41 @@ Future<String?> performCreate(
         return exitCode == 0;
       },
     );
+  }
+
+  if (context.skills) {
+    await log.progress('Installing agent skills', () async {
+      try {
+        final workspace = await const WorkspaceResolver().resolve(
+          serverpodDirs.projectDir.path,
+        );
+
+        final stdoutController = StreamController<List<int>>();
+        stdoutController.stream
+            .transform(const Utf8Decoder(allowMalformed: true))
+            .transform(const LineSplitter())
+            .listen((data) => log.debug(data));
+        final toDebugLog = IOSink(stdoutController);
+        final stderrController = StreamController<List<int>>();
+        stderrController.stream
+            .transform(const Utf8Decoder(allowMalformed: true))
+            .transform(const LineSplitter())
+            .listen((data) => _logError(data));
+        final toErrorLog = IOSink(stderrController);
+
+        final success = await getSkills(
+          ides: [Ide.claude, Ide.generic],
+          workspace: workspace,
+          stdout: toDebugLog,
+          stderr: toErrorLog,
+        );
+
+        if (!success) _logError('Failed to install agent skills');
+      } catch (_) {
+        _logError('Failed to install agent skills');
+      }
+      return true;
+    });
   }
 
   if (success || force) {

@@ -331,6 +331,21 @@ void main() async {
             reason: 'Root pubspec.lock file does not exist.',
           );
         });
+
+        test('has agent skills installed', () {
+          expect(
+            Directory(
+              path.join(tempPath, projectName, '.agent', 'skills'),
+            ).existsSync(),
+            isTrue,
+          );
+          expect(
+            Directory(
+              path.join(tempPath, projectName, '.claude', 'skills'),
+            ).existsSync(),
+            isTrue,
+          );
+        });
       });
     });
   });
