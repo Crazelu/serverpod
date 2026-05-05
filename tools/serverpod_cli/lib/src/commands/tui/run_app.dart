@@ -23,13 +23,13 @@ Future<void> runServerpodApp(
   final originalLineMode = stdin.lineMode;
 
   void restoreTerminal() {
-    stdin.echoMode = originalEchoMode;
-    stdin.lineMode = originalLineMode;
+    try {
+      stdin.lineMode = originalLineMode;
+      stdin.echoMode = originalEchoMode;
+    } catch (_) {}
   }
 
-  effectiveBackend.onExit(() async {
-    restoreTerminal();
-  });
+  effectiveBackend.onExit(() => restoreTerminal());
 
   void onShutDownSignalDefault(ProcessSignal _) {
     shutdownApp();

@@ -2,28 +2,33 @@ import 'dart:async';
 
 import 'package:nocterm/nocterm.dart';
 
-typedef ExitCall = Future<void> Function();
-
 /// A terminal backend for nocterm that allows executing
 /// callbacks before exiting the Dart process.
-/// Callbacks are and added using [onExit].
+/// Callbacks are and added using [onExit] and [preExit].
 class ServerpodTerminalBackend extends StdioBackend {
-  ServerpodTerminalBackend();
+  ServerpodTerminalBackend({this.preExit});
 
-  final List<ExitCall> _onExitCalls = [];
+  final Future<void> Function()? preExit;
 
-  void onExit(ExitCall callback) {
+  final List<VoidCallback> _onExitCalls = [];
+
+  void onExit(VoidCallback callback) {
     _onExitCalls.add(callback);
   }
 
   @override
   void requestExit([int exitCode = 0]) {
-    Future.wait<void>([for (final future in _onExitCalls) future.call()])
-        .then((_) {
-          super.requestExit(exitCode);
-        })
-        .catchError((_) {
-          super.requestExit(exitCode);
-        });
+    for (final exitCall in _onExitCalls) {
+      exitCall();
+    }
+
+    preExit
+        ?.call()
+        .then((_) => super.requestExit(exitCode))
+        .catchError((_) => super.requestExit(exitCode));
+
+    if (preExit == null) {
+      super.requestExit(exitCode);
+    }
   }
 }
