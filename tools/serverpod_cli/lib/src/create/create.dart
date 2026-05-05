@@ -283,6 +283,11 @@ Future<String?> performCreate(
     );
   }
 
+  await log.progress('Configuring Serverpod MCP server', () async {
+    await _configureMcpServer(serverpodDirs.projectDir.path);
+    return true;
+  });
+
   if (context.skills) {
     await log.progress('Installing agent skills', () async {
       try {
@@ -380,6 +385,66 @@ Future<void> _moveDirectoryContents(
       await _moveDirectoryContents(entity, newDir);
       await entity.delete();
     }
+  }
+}
+
+Future<void> _configureMcpServer(String projectDirPath) async {
+  const antigravityPath = '.gemini/antigravity/mcp_config.json';
+  const cursorPath = '.cursor/mcp.json';
+  const claudePath = '.mcp.json';
+  const vscodePath = '.vscode/mcp.json';
+  const codexPath = '.codex/config.toml';
+
+  const genericConfig = '''{
+  "mcpServers": {
+    "serverpod": {
+      "command": "serverpod",
+      "args": ["mcp"]
+    },
+    "dart": {
+      "command": "dart",
+      "args": ["mcp-server"]
+    }
+  }
+}
+''';
+
+  const codexConfig = '''[mcp_servers.serverpod]
+command = "serverpod"
+args = ["mcp"]
+
+[mcp_servers.dart_mcp]
+command = "dart"
+args = ["mcp-server", "--force-roots-fallback"]
+''';
+
+  await Future.forEach(
+    [cursorPath, claudePath],
+    (path) async {
+      await _createFileAndWrite(p.join(projectDirPath, path), genericConfig);
+    },
+  );
+
+  await _createFileAndWrite(
+    p.join(projectDirPath, antigravityPath),
+    genericConfig.replaceAll(r'"dart":', r'"dart-mcp-server":'),
+  );
+
+  await _createFileAndWrite(
+    p.join(projectDirPath, vscodePath),
+    genericConfig.replaceAll(r'"mcpServers":', r'"servers":'),
+  );
+
+  await _createFileAndWrite(p.join(projectDirPath, codexPath), codexConfig);
+}
+
+Future<void> _createFileAndWrite(String path, String content) async {
+  final file = File(path);
+  try {
+    await file.create(recursive: true);
+    await file.writeAsString(content);
+  } on FileSystemException {
+    //
   }
 }
 
