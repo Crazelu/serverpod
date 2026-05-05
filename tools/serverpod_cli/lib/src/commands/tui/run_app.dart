@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:nocterm/nocterm.dart';
+import 'package:serverpod_cli/src/commands/tui/terminal_backend.dart';
 
 bool _terminalStateCaptured = false;
 bool _terminalStateRestored = false;
@@ -37,10 +38,13 @@ void restoreServerpodTerminal() {
 Future<void> runServerpodApp(
   Component app, {
   bool enableHotReload = true,
-  TerminalBackend? backend,
+  ServerpodTerminalBackend? backend,
   void Function()? onShutdownSignal,
 }) async {
   _captureTerminalState();
+
+  // final effectiveBackend = backend ?? ServerpodTerminalBackend();
+  // effectiveBackend.onExit(() => restoreServerpodTerminal());
 
   void onShutDownSignalDefault(ProcessSignal _) {
     restoreServerpodTerminal();
