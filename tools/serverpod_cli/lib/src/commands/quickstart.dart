@@ -121,7 +121,7 @@ class QuickstartCommand extends ServerpodCommand<QuickstartOption> {
       template,
       force,
       interactive: interactive,
-      context: TemplateContext(sqlite: true, web: true),
+      context: TemplateContext(sqlite: true, web: true, skills: true),
     );
 
     if (projectPath == null) {

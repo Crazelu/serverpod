@@ -335,6 +335,21 @@ void main() {
             isTrue,
           );
         });
+
+        test('has agent skills installed', () {
+          expect(
+            Directory(
+              path.join(tempPath, projectName, '.agents', 'skills'),
+            ).existsSync(),
+            isTrue,
+          );
+          expect(
+            Directory(
+              path.join(tempPath, projectName, '.claude', 'skills'),
+            ).existsSync(),
+            isTrue,
+          );
+        });
       });
     });
   });

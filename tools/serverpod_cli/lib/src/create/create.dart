@@ -1,3 +1,5 @@
+// ignore_for_file: implementation_imports
+
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -24,6 +26,9 @@ import 'package:serverpod_cli/src/util/pubspec_helpers.dart';
 import 'package:serverpod_cli/src/util/serverpod_cli_logger.dart';
 import 'package:serverpod_cli/src/util/string_validators.dart';
 import 'package:serverpod_shared/serverpod_shared.dart';
+import 'package:skills/skills.dart';
+import 'package:skills/src/core/workspace_resolver.dart';
+import 'package:skills/src/ide/ide.dart';
 import 'package:yaml_edit/yaml_edit.dart';
 
 import 'copier.dart';
@@ -278,6 +283,59 @@ Future<String?> performCreate(
     );
   }
 
+  if (context.skills) {
+    await log.progress('Installing agent skills', () async {
+      try {
+        final workspace = await const WorkspaceResolver().resolve(
+          serverpodDirs.projectDir.path,
+        );
+
+        final stdoutController = StreamController<List<int>>();
+        stdoutController.stream
+            .transform(const Utf8Decoder(allowMalformed: true))
+            .transform(const LineSplitter())
+            .listen((data) => log.debug(data));
+        final toDebugLog = IOSink(stdoutController);
+        final stderrController = StreamController<List<int>>();
+        stderrController.stream
+            .transform(const Utf8Decoder(allowMalformed: true))
+            .transform(const LineSplitter())
+            .listen((data) => _logError(data));
+        final toErrorLog = IOSink(stderrController);
+
+        final success = await getSkills(
+          ides: [Ide.claude, Ide.generic],
+          workspace: workspace,
+          stdout: toDebugLog,
+          stderr: toErrorLog,
+        );
+
+        if (!success) {
+          _logError('Failed to install agent skills');
+          return false;
+        }
+
+        final agentDir = Directory(
+          p.join(serverpodDirs.projectDir.path, '.agent'),
+        );
+        final agentsDir = Directory(
+          p.join(serverpodDirs.projectDir.path, '.agents'),
+        );
+
+        try {
+          await _moveDirectoryContents(agentDir, agentsDir);
+          await agentDir.delete();
+        } on FileSystemException {
+          //
+        }
+      } catch (_) {
+        _logError('Failed to install agent skills');
+        return false;
+      }
+      return true;
+    });
+  }
+
   if (success || force) {
     log.info(
       'Serverpod project created.',
@@ -297,6 +355,32 @@ Future<String?> performCreate(
   }
 
   return null;
+}
+
+Future<void> _moveDirectoryContents(
+  Directory source,
+  Directory destination,
+) async {
+  if (!await source.exists()) {
+    throw Exception('Source directory does not exist: ${source.path}');
+  }
+
+  // Ensure destination exists
+  if (!await destination.exists()) {
+    await destination.create(recursive: true);
+  }
+
+  await for (final entity in source.list()) {
+    final newPath = p.join(destination.path, p.basename(entity.path));
+
+    if (entity is File) {
+      await entity.rename(newPath);
+    } else if (entity is Directory) {
+      final newDir = await Directory(newPath).create(recursive: true);
+      await _moveDirectoryContents(entity, newDir);
+      await entity.delete();
+    }
+  }
 }
 
 /// Upgrades a server project.

@@ -8,11 +8,7 @@ enum ServerpodCreateConfig<T extends ConfigOption> {
     label: 'Project Type',
     options: TemplateTypeOption.values,
     defaultOption: TemplateTypeOption.server,
-    templates: [
-      ServerpodTemplateType.server,
-      ServerpodTemplateType.module,
-      ServerpodTemplateType.mini,
-    ],
+    templates: ServerpodTemplateType.values,
   ),
   database<DatabaseConfigOption>(
     label: 'Database',
@@ -44,6 +40,12 @@ enum ServerpodCreateConfig<T extends ConfigOption> {
         disabledOption: BoolConfigOption.disabled,
       ),
     ],
+  ),
+  skills<BoolConfigOption>(
+    label: 'Agent Skills',
+    options: BoolConfigOption.values,
+    defaultOption: BoolConfigOption.enabled,
+    templates: ServerpodTemplateType.values,
   )
   ;
 

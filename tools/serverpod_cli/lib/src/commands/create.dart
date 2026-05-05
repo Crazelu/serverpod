@@ -143,6 +143,7 @@ class CreateCommand extends ServerpodCommand<CreateOption> {
       redis: true,
       postgres: true,
       web: true,
+      skills: true,
     );
 
     final useTui = (interactive ?? true) && !ci.isCI;

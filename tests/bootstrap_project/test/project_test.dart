@@ -705,6 +705,21 @@ void main() async {
             expect(content, contains('flutter_secure_storage'));
           },
         );
+
+        test('has agent skills installed', () {
+          expect(
+            Directory(
+              path.join(tempPath, projectName, '.agents', 'skills'),
+            ).existsSync(),
+            isTrue,
+          );
+          expect(
+            Directory(
+              path.join(tempPath, projectName, '.claude', 'skills'),
+            ).existsSync(),
+            isTrue,
+          );
+        });
       });
 
       group('then the .vscode directory', () {

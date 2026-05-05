@@ -202,6 +202,7 @@ class CreateConfigState extends ServerpodState {
         DatabaseConfigOption.sqlite,
       ),
       web: getStatus(ServerpodCreateConfig.web, BoolConfigOption.enabled),
+      skills: getStatus(ServerpodCreateConfig.skills, BoolConfigOption.enabled),
     );
   }
 }
