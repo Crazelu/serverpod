@@ -595,7 +595,7 @@ class Serverpod {
     if (Features.enableDatabase && databaseConfiguration != null) {
       final databaseDialect = databaseConfiguration.dialect;
       final databaseProvider = DatabaseProvider.forDialect(databaseDialect);
-      _databasePoolManager = databaseProvider.createPoolManager(
+      final databasePoolManager = databaseProvider.createPoolManager(
         serializationManager,
         runtimeParametersBuilder,
         databaseConfiguration,
@@ -606,7 +606,12 @@ class Serverpod {
       // This is required because other operations in Serverpod assumes that
       // the database is connected when the Serverpod is created
       // (such as createSession(...)).
-      _databasePoolManager?.start();
+      databasePoolManager.start();
+      _databasePoolManager = databasePoolManager;
+      // Swallow async-init failures so the pool isn't reported as an
+      // unhandled async error; awaiters of [DatabasePoolManager.started]
+      // (notably _unguardedStart) still observe the failure.
+      unawaited(databasePoolManager.started.catchError((_) {}));
     }
 
     if (Features.enableDatabase) {
@@ -761,9 +766,16 @@ class Serverpod {
       CloudStoragePublicEndpoint().register(this);
     }
 
-    // It is important that we start the database pool manager before
-    // attempting to connect to the database.
-    _databasePoolManager?.start();
+    // Ensure the database pool manager has started. start() is sync
+    // and idempotent on an already-running pool; after shutdown() the
+    // pool manager has reset its internal state, so this re-kicks the
+    // pool when Serverpod is started again. Awaiting [started] surfaces
+    // any failure from async init (e.g. SQLite's PRAGMA) to this caller.
+    final pool = _databasePoolManager;
+    if (pool != null) {
+      pool.start();
+      await pool.started;
+    }
 
     if (Features.enableMigrations) {
       int? maxAttempts = config.role == ServerpodRole.maintenance ? 6 : null;
@@ -1214,6 +1226,11 @@ class Serverpod {
   /// creating a [Session] you are responsible of calling the [close] method
   /// when you are done.
   Future<InternalSession> createSession({bool enableLogging = true}) async {
+    // The constructor's eager start() left _db assigned synchronously,
+    // but await [started] so callers that issue queries synchronously
+    // after createSession() returns are guaranteed any async init
+    // (SQLite PRAGMA) has completed.
+    await _databasePoolManager?.started;
     var session = InternalSession(
       server: server,
       enableLogging: enableLogging,

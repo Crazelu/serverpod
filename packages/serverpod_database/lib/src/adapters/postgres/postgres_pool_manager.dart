@@ -99,6 +99,12 @@ class PostgresPoolManager implements DatabasePoolManager {
     );
   }
 
+  /// Postgres [start] is synchronous - the pool is fully ready as soon
+  /// as [pg.Pool.withEndpoints] returns - so this is just a resolved
+  /// future for interface symmetry with SQLite.
+  @override
+  Future<void> get started => Future.value();
+
   @override
   Future<void> stop() async {
     await _pgPool?.close();

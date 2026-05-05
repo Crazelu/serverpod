@@ -22,10 +22,14 @@ abstract interface class DatabasePoolManager {
   /// Starts the database pool.
   void start();
 
+  /// Resolves once async initialisation kicked off by [start] has completed.
+  Future<void> get started;
+
   /// Closes the database pool.
   Future<void> stop();
 
   /// Tests the database connection.
+  ///
   /// Throws an exception if the connection is not working.
   Future<bool> testConnection();
 }

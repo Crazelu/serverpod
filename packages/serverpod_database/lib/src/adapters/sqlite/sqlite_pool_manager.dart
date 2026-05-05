@@ -28,6 +28,9 @@ class SqlitePoolManager implements DatabasePoolManager {
 
   SqliteDatabase? _db;
 
+  /// Tracks the PRAGMA future kicked off by [start]
+  Future<void> _started = Future.value();
+
   /// The SQLite database instance.
   ///
   /// Throws a [StateError] if the database has not been started.
@@ -53,23 +56,33 @@ class SqlitePoolManager implements DatabasePoolManager {
   }
 
   /// Starts the database connection.
+  ///
+  /// Callers can await [started] to ensure initialization is complete,
+  /// and surface any errors.
   @override
   void start() {
-    _db ??= SqliteDatabase(
+    if (_db != null) return;
+    final db = SqliteDatabase(
       path: config.filePath,
       // This will only be available from 0.14 onwards.
       // options: SqliteOptions(
       //   maxReaders:
       //       config.maxConnectionCount ?? SqliteOptions.defaultMaxReaders,
       // ),
-    )..execute('PRAGMA foreign_keys = ON');
+    );
+    _db = db;
+    _started = db.execute('PRAGMA foreign_keys = ON');
   }
+
+  @override
+  Future<void> get started => _started;
 
   /// Closes the database.
   @override
   Future<void> stop() async {
     await _db?.close();
     _db = null;
+    _started = Future.value();
   }
 
   /// Tests the database connection.

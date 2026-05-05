@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:path/path.dart' as p;
 import 'package:serverpod_cli/src/config_info/config_info.dart';
 import 'package:serverpod_database/serverpod_database.dart';
 import 'package:serverpod_shared/serverpod_shared.dart';
@@ -31,10 +32,17 @@ Future<List<String>> applyPendingMigrations({
     throw StateError('No database configured for run mode "$runMode".');
   }
 
-  final pool = DatabaseProvider.forDialect(
-    dbConfig.dialect,
-  ).createPoolManager(_CliSerializationManager(moduleName), null, dbConfig);
-  pool.start();
+  // Resolve relative SQLite paths against [serverDir] so the CLI opens
+  // the same file the pod will
+  final resolvedDbConfig = _resolveDbConfigPaths(dbConfig, serverDir);
+
+  final pool =
+      DatabaseProvider.forDialect(resolvedDbConfig.dialect).createPoolManager(
+        _CliSerializationManager(moduleName),
+        null,
+        resolvedDbConfig,
+      )..start();
+  await pool.started;
 
   try {
     // Session and Database have a circular construction dependency:
@@ -99,6 +107,21 @@ String runModeFromServerArgs(List<String> serverArgs) {
     }
   }
   return 'development';
+}
+
+/// Returns [dbConfig] with any relative SQLite [SqliteDatabaseConfig.filePath]
+/// resolved against [serverDir]. Non-SQLite configs and already-absolute
+/// paths are returned unchanged.
+DatabaseConfig _resolveDbConfigPaths(
+  DatabaseConfig dbConfig,
+  String serverDir,
+) {
+  if (dbConfig is! SqliteDatabaseConfig) return dbConfig;
+  if (p.isAbsolute(dbConfig.filePath)) return dbConfig;
+  return SqliteDatabaseConfig(
+    filePath: p.normalize(p.join(serverDir, dbConfig.filePath)),
+    maxConnectionCount: dbConfig.maxConnectionCount,
+  );
 }
 
 /// Wraps [ConfigInfo] with a chdir into [serverDir] so it picks up
