@@ -283,6 +283,11 @@ Future<String?> performCreate(
     );
   }
 
+  await log.progress('Configuring Serverpod MCP server', () async {
+    await _configureMcpServer(serverpodDirs.projectDir.path);
+    return true;
+  });
+
   if (context.skills) {
     await log.progress('Installing agent skills', () async {
       try {
@@ -381,6 +386,35 @@ Future<void> _moveDirectoryContents(
       await entity.delete();
     }
   }
+}
+
+Future<void> _configureMcpServer(String projectDirPath) async {
+  const antigravityPath = '.gemini/antigravity/mcp_config.json';
+  const cursorPath = '.cursor/mcp.json';
+  const claudePath = '.mcp.json';
+
+  const config = '''{
+  "mcpServers": {
+    "serverpod": {
+      "command": "serverpod",
+      "args": ["mcp"]
+    }
+  }
+}
+''';
+
+  await Future.forEach(
+    [antigravityPath, cursorPath, claudePath],
+    (path) async {
+      final file = File(p.join(projectDirPath, path));
+      try {
+        await file.create(recursive: true);
+        await file.writeAsString(config);
+      } on FileSystemException {
+        //
+      }
+    },
+  );
 }
 
 /// Upgrades a server project.
