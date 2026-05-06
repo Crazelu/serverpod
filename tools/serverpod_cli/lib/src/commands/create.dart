@@ -190,6 +190,7 @@ class CreateCommand extends ServerpodCommand<CreateOption> {
   Future<void> _shutdownNocterm([int exitCode = 0]) async {
     await closeLogger();
     initializeLogger();
+    restoreServerpodTerminal();
     shutdownApp(exitCode);
   }
 
@@ -212,6 +213,7 @@ class CreateCommand extends ServerpodCommand<CreateOption> {
       );
 
       if (template.isServer) logStartInstructions(projectPath);
+      if (template.isMini) logMiniStartInstructions(projectPath);
     }
 
     await log.flush();
@@ -234,13 +236,15 @@ class CreateCommand extends ServerpodCommand<CreateOption> {
 
     String? projectPath;
 
-    await runServerpodApp(
-      backend: ServerpodTerminalBackend(
-        preExit: () => _preExit(
-          template: template,
-          projectPath: projectPath,
-        ),
+    final backend = ServerpodTerminalBackend(
+      preExit: () => _preExit(
+        template: state.template ?? template,
+        projectPath: projectPath,
       ),
+    );
+
+    await runServerpodApp(
+      backend: backend,
       ServerpodCreateApp(
         name: name,
         holder: holder,
