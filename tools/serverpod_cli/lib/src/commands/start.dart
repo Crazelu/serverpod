@@ -5,7 +5,6 @@ import 'dart:io';
 import 'package:args/args.dart';
 import 'package:cli_tools/cli_tools.dart';
 import 'package:config/config.dart';
-import 'package:nocterm/nocterm.dart';
 import 'package:path/path.dart' as p;
 import 'package:serverpod_cli/analyzer.dart';
 import 'package:serverpod_cli/src/commands/generate.dart';
@@ -794,7 +793,7 @@ Future<int> _runWithTui({
 
   // Captured so the renderer tear-down listener can wait for the
   // backend's cleanup (ctx.dispose) to finish before calling
-  // shutdownApp. Default to a no-op so the listener is safe to invoke
+  // shutdownServerpodApp. Default to a no-op so the listener is safe to invoke
   // even if SIGINT arrives before onReady fires.
   Future<void> backendFuture = Future.value();
 
@@ -817,12 +816,11 @@ Future<int> _runWithTui({
         });
   }
 
-  // Wait for the backend's dispose to finish before calling shutdownApp
+  // Wait for the backend's dispose to finish before calling shutdownServerpodApp
   unawaited(
     shutdown.future.then((code) async {
       await backendFuture;
-      restoreServerpodTerminal();
-      shutdownApp(code);
+      shutdownServerpodApp(code);
     }),
   );
 
@@ -831,7 +829,7 @@ Future<int> _runWithTui({
     onShutdownSignal: () => shutdown.complete(0),
   );
 
-  // runServerpodApp returned, so shutdownApp ran, so the listener fired,
+  // runServerpodApp returned, so shutdownServerpodApp ran, so the listener fired,
   // so shutdown.future is completed.
   return shutdown.future;
 }
