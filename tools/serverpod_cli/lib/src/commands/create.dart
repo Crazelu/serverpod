@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:ci/ci.dart' as ci;
 import 'package:cli_tools/cli_tools.dart';
 import 'package:config/config.dart';
-import 'package:nocterm/nocterm.dart';
 import 'package:serverpod_cli/src/commands/create/tui/app.dart';
 import 'package:serverpod_cli/src/commands/create/tui/state.dart';
 import 'package:serverpod_cli/src/commands/create/tui/state_holder.dart';
@@ -185,18 +184,17 @@ class CreateCommand extends ServerpodCommand<CreateOption> {
     }
   }
 
-  /// Shuts down Nocterm and closes the TuiLogWriter.
-  /// Initializes the default logger for post-nocterm logs.
-  Future<void> _shutdownNocterm([int exitCode = 0]) async {
+  /// Shuts down TUI and closes the TuiLogWriter.
+  /// Initializes the default logger for post-tui logs.
+  Future<void> _shutdownTuiApp([int exitCode = 0]) async {
     await closeLogger();
     initializeLogger();
-    restoreServerpodTerminal();
-    shutdownApp(exitCode);
+    shutdownServerpodApp(exitCode);
   }
 
   /// Flushes success logs if [projectPath] is not null.
   /// Error logs are flushed if any.
-  /// This is done when shutting down nocterm but before exiting
+  /// This is done when shutting down TUI but before exiting
   /// the Dart process.
   Future<void> _preExit({
     required ServerpodTemplateType template,
@@ -261,12 +259,9 @@ class CreateCommand extends ServerpodCommand<CreateOption> {
 
           final success = projectPath != null;
 
-          // Wait for the user to at least briefly see the success message.
-          await Future<void>.delayed(const Duration(seconds: 3));
-
-          await _shutdownNocterm(success ? 0 : 1);
+          await _shutdownTuiApp(success ? 0 : 1);
         },
-        onQuit: () => _shutdownNocterm(1),
+        onQuit: () => _shutdownTuiApp(1),
         onSkipFlutterBuild: () {
           if (!flutterBuildCompleter.isCompleted) {
             flutterBuildCompleter.complete(0);

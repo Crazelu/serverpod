@@ -224,8 +224,7 @@ class MainScreen extends StatelessComponent {
               onQuit?.call();
             } else {
               // Boot path: [onQuit] is wired only after [WatchLoopReady].
-              restoreServerpodTerminal();
-              shutdownApp(0);
+              shutdownServerpodApp(0);
             }
           },
         ),

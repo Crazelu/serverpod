@@ -18,7 +18,7 @@ void _captureTerminalState() {
 /// Restores stdin terminal modes captured by [runServerpodApp].
 ///
 /// Safe to call multiple times.
-void restoreServerpodTerminal() {
+void _restoreServerpodTerminal() {
   if (!_terminalStateCaptured || _terminalStateRestored) return;
   stdin.echoMode = _originalEchoMode;
   stdin.lineMode = _originalLineMode;
@@ -28,12 +28,12 @@ void restoreServerpodTerminal() {
 /// Run a TUI app with terminal settings restoration.
 ///
 /// When [onShutdownSignal] is null (the default), SIGINT/SIGTERM trigger an
-/// immediate `shutdownApp()` and the app exits without running any user
+/// immediate `shutdownServerpodApp()` and the app exits without running any user
 /// cleanup.
 ///
 /// When [onShutdownSignal] is provided, signals invoke that callback instead.
 /// The caller is then responsible for running cleanup and eventually calling
-/// `shutdownApp(...)` to tear down the nocterm renderer.
+/// `shutdownServerpodApp(...)` to tear down the nocterm renderer.
 Future<void> runServerpodApp(
   Component app, {
   bool enableHotReload = true,
@@ -43,12 +43,11 @@ Future<void> runServerpodApp(
   _captureTerminalState();
 
   void onShutDownSignalDefault(ProcessSignal _) {
-    restoreServerpodTerminal();
-    shutdownApp();
+    shutdownServerpodApp();
   }
 
   void onShutDownSignalDelegated(ProcessSignal _) {
-    restoreServerpodTerminal();
+    _restoreServerpodTerminal();
     onShutdownSignal!.call();
   }
 
@@ -61,13 +60,12 @@ Future<void> runServerpodApp(
     ProcessSignal.sigterm.watch().listen(handler);
   }
 
-  try {
-    await runApp(
-      app,
-      enableHotReload: enableHotReload,
-      backend: backend,
-    );
-  } finally {
-    restoreServerpodTerminal();
-  }
+  await runApp(app, enableHotReload: enableHotReload, backend: backend);
+}
+
+/// Restores stdin terminal modes captured by [runServerpodApp]
+/// then shuts down the nocterm app with proper terminal cleanup.
+void shutdownServerpodApp([int exitCode = 0]) {
+  _restoreServerpodTerminal();
+  shutdownApp(exitCode);
 }
