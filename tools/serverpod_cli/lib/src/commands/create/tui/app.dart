@@ -51,55 +51,11 @@ class ServerpodCreateAppState extends ServerpodAppState<ServerpodCreateApp> {
   }
 
   bool _handleKeyEvent(KeyboardEvent event) {
-    final state = component.holder.state;
-
     if (event.logicalKey == LogicalKey.keyS) {
       component.onSkipFlutterBuild();
       return true;
     }
 
-    // Scrolling.
-    final c = state.creatingProject ? _logScrollController : _scrollController;
-
-    final quarter = c.viewportDimension / 4;
-    final half = c.viewportDimension / 2;
-
-    switch (event.logicalKey) {
-      // Quarter screen (Shift+arrows) - before plain arrows.
-      case LogicalKey.arrowUp when event.isShiftPressed:
-        c.scrollUp(quarter);
-      case LogicalKey.arrowDown when event.isShiftPressed:
-        c.scrollDown(quarter);
-
-      // Single line
-      case LogicalKey.keyK:
-        c.scrollUp();
-      case LogicalKey.keyJ:
-        c.scrollDown();
-
-      // Half screen
-      case LogicalKey.keyU:
-        c.scrollUp(half);
-      case LogicalKey.keyD:
-        c.scrollDown(half);
-
-      // Full screen
-      case LogicalKey.pageUp || LogicalKey.backspace || LogicalKey.keyB:
-        c.pageUp();
-      case LogicalKey.pageDown || LogicalKey.space || LogicalKey.keyF:
-        c.pageDown();
-
-      // Start / end - G with shift = end, g without = start.
-      case LogicalKey.keyG when event.isShiftPressed:
-        c.scrollToEnd();
-      case LogicalKey.home || LogicalKey.keyG:
-        c.scrollToStart();
-      case LogicalKey.end:
-        c.scrollToEnd();
-
-      default:
-        return false;
-    }
-    return true;
+    return false;
   }
 }

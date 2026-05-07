@@ -73,9 +73,9 @@ class MainScreen extends StatelessComponent {
     return Scrollbar(
       controller: scrollController,
       thumbVisibility: true,
-      child: ListView(
+      child: SingleChildScrollView(
         controller: scrollController,
-        children: [_buildConfigurations(theme)],
+        child: _buildConfigurations(theme),
       ),
     );
   }
@@ -239,6 +239,7 @@ class MainScreen extends StatelessComponent {
     return LogViewerWidget(
       state: holder.state,
       scrollController: logScrollController,
+      keyboardScrollable: true,
     );
   }
 }
