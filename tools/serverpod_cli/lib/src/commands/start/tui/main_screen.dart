@@ -92,7 +92,7 @@ class MainScreen extends StatelessComponent {
         for (var i = 0; i < labels.length; i++) ...[
           GestureDetector(
             onTap: () => onTabChanged(i),
-            child: _buildTab(
+            child: _buildTabTitle(
               st,
               label: labels[i],
               selected: state.selectedTab == i,
@@ -105,7 +105,7 @@ class MainScreen extends StatelessComponent {
     );
   }
 
-  Component _buildTab(
+  Component _buildTabTitle(
     ServerpodThemeData theme, {
     required String label,
     required bool selected,
@@ -113,12 +113,15 @@ class MainScreen extends StatelessComponent {
     return Row(
       children: [
         if (selected) ...[
-          Text('▐', style: TextStyle(color: theme.activeTab)),
+          Text('▐', style: TextStyle(color: theme.highlight)),
           Text(
             label,
-            style: TextStyle(color: theme.activeTab, reverse: true),
+            style: TextStyle(
+              color: theme.brightText,
+              backgroundColor: theme.highlight,
+            ),
           ),
-          Text('▌', style: TextStyle(color: theme.activeTab)),
+          Text('▌', style: TextStyle(color: theme.highlight)),
         ] else ...[
           Text(' $label ', style: TextStyle(color: theme.brightText)),
         ],

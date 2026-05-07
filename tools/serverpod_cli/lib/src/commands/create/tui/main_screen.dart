@@ -60,7 +60,7 @@ class MainScreen extends StatelessComponent {
           Text(
             title,
             style: TextStyle(
-              color: theme.activeTab,
+              color: theme.primary,
               fontWeight: FontWeight.bold,
             ),
           ),

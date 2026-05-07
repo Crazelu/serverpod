@@ -82,11 +82,11 @@ class _HelpOverlayState extends State<HelpOverlay> {
             color: theme.surface,
             border: BoxBorder.all(
               style: BoxBorderStyle.rounded,
-              color: st.activeTab,
+              color: st.primary,
             ),
             title: BorderTitle(
               text: 'Help',
-              style: TextStyle(color: st.activeTab),
+              style: TextStyle(color: st.primary),
             ),
           ),
           child: Padding(
@@ -106,7 +106,7 @@ class _HelpOverlayState extends State<HelpOverlay> {
                           Text(
                             section,
                             style: TextStyle(
-                              color: st.activeTab,
+                              color: st.primary,
                               fontWeight: FontWeight.bold,
                             ),
                           ),

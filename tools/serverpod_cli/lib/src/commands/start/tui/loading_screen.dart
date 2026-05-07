@@ -60,10 +60,11 @@ class _LoadingScreenState extends State<LoadingScreen>
 
   @override
   Component build(BuildContext context) {
+    final theme = ServerpodTheme.of(context);
     final t = _controller.value;
     if (t <= 0 && _fadingOut) return const SizedBox.shrink();
 
-    final baseColor = Color.lerp(Color.defaultColor, Colors.brightBlue, t)!;
+    final baseColor = Color.lerp(Color.defaultColor, theme.primary, t)!;
     final highlightColor = Color.lerp(Color.defaultColor, Colors.white, t)!;
 
     return LayoutBuilder(

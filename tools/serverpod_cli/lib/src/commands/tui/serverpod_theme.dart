@@ -8,8 +8,7 @@ const _highlightLight = Color(0xffedeae6);
 /// Serverpod-specific TUI theme colors layered on top of [TuiThemeData].
 class ServerpodThemeData {
   const ServerpodThemeData({
-    required this.activationKey,
-    required this.activeTab,
+    required this.primary,
     required this.spinner,
     required this.debugLevel,
     required this.infoLevel,
@@ -23,8 +22,7 @@ class ServerpodThemeData {
   });
 
   ServerpodThemeData copyWith({
-    Color? activationKey,
-    Color? activeTab,
+    Color? primary,
     Color? spinner,
     Color? debugLevel,
     Color? infoLevel,
@@ -37,8 +35,7 @@ class ServerpodThemeData {
     Color? highlight,
   }) {
     return ServerpodThemeData(
-      activationKey: activationKey ?? this.activationKey,
-      activeTab: activeTab ?? this.activeTab,
+      primary: primary ?? this.primary,
       spinner: spinner ?? this.spinner,
       debugLevel: debugLevel ?? this.debugLevel,
       infoLevel: infoLevel ?? this.infoLevel,
@@ -52,11 +49,8 @@ class ServerpodThemeData {
     );
   }
 
-  /// Color for button activation characters (R, M, A, Q).
-  final Color activationKey;
-
-  /// Color for the selected tab label.
-  final Color activeTab;
+  /// Primary color;
+  final Color primary;
 
   /// Color for the spinning progress indicator.
   final Color spinner;
@@ -91,8 +85,7 @@ class ServerpodThemeData {
     final darkThemed = theme.brightness == Brightness.dark;
     final blue = darkThemed ? _serverpodBlueDark : _serverpodBlueLight;
     return ServerpodThemeData(
-      activationKey: blue,
-      activeTab: blue,
+      primary: blue,
       spinner: blue,
       debugLevel: theme.outline,
       infoLevel: theme.primary,
@@ -108,8 +101,7 @@ class ServerpodThemeData {
 
   /// Default dark theme.
   static const dark = ServerpodThemeData(
-    activationKey: _serverpodBlueDark,
-    activeTab: _serverpodBlueDark,
+    primary: _serverpodBlueDark,
     spinner: _serverpodBlueDark,
     debugLevel: Colors.gray,
     infoLevel: Colors.blue,
