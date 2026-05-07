@@ -8,7 +8,7 @@ enum ServerpodCreateConfig<T extends ConfigOption> {
     label: 'Project Type',
     options: TemplateTypeOption.values,
     defaultOption: TemplateTypeOption.server,
-    templates: ServerpodTemplateType.values,
+    templates: [ServerpodTemplateType.server, ServerpodTemplateType.module],
   ),
   database<DatabaseConfigOption>(
     label: 'Database',
@@ -45,7 +45,7 @@ enum ServerpodCreateConfig<T extends ConfigOption> {
     label: 'Agent Skills',
     options: BoolConfigOption.values,
     defaultOption: BoolConfigOption.enabled,
-    templates: ServerpodTemplateType.values,
+    templates: [ServerpodTemplateType.server, ServerpodTemplateType.module],
   )
   ;
 
@@ -107,8 +107,7 @@ enum DatabaseConfigOption implements ConfigOption {
 /// [ConfigOption] for supported template types.
 enum TemplateTypeOption implements ConfigOption {
   server('Server'),
-  module('Module'),
-  mini('Mini')
+  module('Module')
   ;
 
   const TemplateTypeOption(this.label);
@@ -138,7 +137,6 @@ class ConfigRequirement<T extends ConfigOption> {
 
 extension TemplateTypeOptionExtension on TemplateTypeOption {
   ServerpodTemplateType get toTemplate => switch (this) {
-    TemplateTypeOption.mini => ServerpodTemplateType.mini,
     TemplateTypeOption.server => ServerpodTemplateType.server,
     TemplateTypeOption.module => ServerpodTemplateType.module,
   };
@@ -146,8 +144,10 @@ extension TemplateTypeOptionExtension on TemplateTypeOption {
 
 extension ServerpodTemplateTypeExtension on ServerpodTemplateType {
   TemplateTypeOption get toConfigOption => switch (this) {
-    ServerpodTemplateType.mini => TemplateTypeOption.mini,
     ServerpodTemplateType.server => TemplateTypeOption.server,
     ServerpodTemplateType.module => TemplateTypeOption.module,
+    ServerpodTemplateType.mini => throw UnsupportedError(
+      'Mini template is not supported in the config.',
+    ),
   };
 }
