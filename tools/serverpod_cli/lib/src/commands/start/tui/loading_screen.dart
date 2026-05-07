@@ -3,6 +3,7 @@ import 'package:nocterm/nocterm.dart';
 import 'package:nocterm/src/components/render_ascii_text.dart'
     show AsciiLayoutEngine;
 import 'package:serverpod_cli/src/commands/tui/components.dart';
+import 'package:serverpod_cli/src/commands/tui/serverpod_theme.dart';
 import 'package:serverpod_cli/src/commands/tui/shimmer.dart';
 import 'package:serverpod_cli/src/commands/tui/unconstrained_box.dart';
 
@@ -86,7 +87,10 @@ class _LoadingScreenState extends State<LoadingScreen>
               );
 
         return Center(
-          child: BorderedBox(backgroundColor: Colors.black, child: splash),
+          child: BorderedBox(
+            backgroundColor: Color.defaultColor,
+            child: splash,
+          ),
         );
       },
     );
@@ -144,7 +148,8 @@ class _LoadingScreenState extends State<LoadingScreen>
   }
 
   Component _buildSubtitle(double t) {
-    final white = Color.lerp(Color.defaultColor, Colors.brightWhite, t)!;
+    final theme = ServerpodTheme.of(context);
+    final white = Color.lerp(Color.defaultColor, theme.brightText, t)!;
     final dim = Color.lerp(Color.defaultColor, Colors.gray, t)!;
 
     const gradientColors = [

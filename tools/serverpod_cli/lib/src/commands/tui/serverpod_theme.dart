@@ -13,6 +13,7 @@ class ServerpodThemeData {
     required this.success,
     required this.failure,
     required this.subtleDivider,
+    required this.brightText,
   });
 
   ServerpodThemeData copyWith({
@@ -26,6 +27,7 @@ class ServerpodThemeData {
     Color? success,
     Color? failure,
     Color? subtleDivider,
+    Color? brightText,
   }) {
     return ServerpodThemeData(
       activationKey: activationKey ?? this.activationKey,
@@ -38,6 +40,7 @@ class ServerpodThemeData {
       success: success ?? this.success,
       failure: failure ?? this.failure,
       subtleDivider: subtleDivider ?? this.subtleDivider,
+      brightText: brightText ?? this.brightText,
     );
   }
 
@@ -63,6 +66,9 @@ class ServerpodThemeData {
   /// Trailing divider on completed operations.
   final Color subtleDivider;
 
+  /// Color for bright texts.
+  final Color brightText;
+
   /// Derives a [ServerpodThemeData] from a nocterm [TuiThemeData].
   ///
   /// Semantic slots map to the closest [TuiThemeData] role:
@@ -72,7 +78,7 @@ class ServerpodThemeData {
   /// uses `secondary` to stand apart from the active-tab color.
   factory ServerpodThemeData.fromTuiTheme(TuiThemeData theme) {
     return ServerpodThemeData(
-      activationKey: Colors.magenta,
+      activationKey: Colors.blue,
       activeTab: theme.primary,
       spinner: theme.primary,
       debugLevel: theme.outline,
@@ -82,6 +88,9 @@ class ServerpodThemeData {
       success: theme.success,
       failure: theme.error,
       subtleDivider: theme.outlineVariant,
+      brightText: theme.brightness == Brightness.dark
+          ? Colors.brightWhite
+          : Colors.brightBlack,
     );
   }
 
@@ -97,6 +106,7 @@ class ServerpodThemeData {
     success: Colors.green,
     failure: Colors.red,
     subtleDivider: Colors.gray,
+    brightText: Colors.brightWhite,
   );
 }
 
