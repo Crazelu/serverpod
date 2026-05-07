@@ -99,7 +99,7 @@ class MainScreen extends StatelessComponent {
             ),
           ),
           if (i < labels.length - 1)
-            Text('─', style: TextStyle(color: st.activeTab)),
+            Text('─', style: TextStyle(color: st.subtleDivider)),
         ],
       ],
     );
@@ -120,10 +120,7 @@ class MainScreen extends StatelessComponent {
           ),
           Text('▌', style: TextStyle(color: theme.activeTab)),
         ] else ...[
-          Text(
-            ' $label ',
-            style: const TextStyle(fontWeight: FontWeight.dim),
-          ),
+          Text(' $label ', style: TextStyle(color: theme.brightText)),
         ],
       ],
     );
