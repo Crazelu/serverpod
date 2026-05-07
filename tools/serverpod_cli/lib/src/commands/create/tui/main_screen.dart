@@ -2,7 +2,6 @@ import 'package:nocterm/nocterm.dart';
 import 'package:serverpod_cli/src/commands/create/tui/config.dart';
 import 'package:serverpod_cli/src/commands/create/tui/state_holder.dart';
 import 'package:serverpod_cli/src/commands/tui/components.dart';
-import 'package:serverpod_cli/src/commands/tui/help_overlay.dart';
 import 'package:serverpod_cli/src/commands/tui/serverpod_theme.dart';
 
 class MainScreen extends StatelessComponent {
@@ -14,7 +13,6 @@ class MainScreen extends StatelessComponent {
     required this.logScrollController,
     required this.onCreate,
     required this.onQuit,
-    required this.onToggleHelp,
   });
 
   final String name;
@@ -23,34 +21,6 @@ class MainScreen extends StatelessComponent {
   final ScrollController logScrollController;
   final VoidCallback onCreate;
   final VoidCallback onQuit;
-  final VoidCallback onToggleHelp;
-
-  static const _helpBindings = [
-    (
-      'Navigation',
-      [
-        ('k', 'Scroll up'),
-        ('j', 'Scroll down'),
-        ('Shift+↑', 'Scroll up ¼ screen'),
-        ('Shift+↓', 'Scroll down ¼ screen'),
-        ('u / Ctrl+u', 'Scroll up ½ screen'),
-        ('d / Ctrl+d', 'Scroll down ½ screen'),
-        ('PgUp / b / Backspace', 'Scroll up one screen'),
-        ('PgDn / Space / f', 'Scroll down one screen'),
-        ('Home / g', 'Go to start'),
-        ('End / G', 'Go to end'),
-      ],
-    ),
-    (
-      'Actions',
-      [
-        ('Enter', 'Create Project'),
-        ('↑↓', 'Navigate Options'),
-        ('←→', 'Select Option'),
-        ('Q', 'Quit'),
-      ],
-    ),
-  ];
 
   @override
   Component build(BuildContext context) {
@@ -61,22 +31,15 @@ class MainScreen extends StatelessComponent {
     return Column(
       children: [
         Expanded(
-          child: Stack(
-            children: [
-              BorderedBox(
-                child: Column(
-                  children: [
-                    _buildHeader(theme),
-                    Expanded(
-                      child: creatingProject
-                          ? _buildLogView()
-                          : _buildForm(theme),
-                    ),
-                  ],
+          child: BorderedBox(
+            child: Column(
+              children: [
+                _buildHeader(theme),
+                Expanded(
+                  child: creatingProject ? _buildLogView() : _buildForm(theme),
                 ),
-              ),
-              if (state.showHelp) const HelpOverlay(bindings: _helpBindings),
-            ],
+              ],
+            ),
           ),
         ),
         _buildButtonBar(theme),
@@ -217,7 +180,7 @@ class MainScreen extends StatelessComponent {
           },
         ),
         Button(
-          name: 'Navigate Options',
+          name: 'Navigate',
           activationChar: '↑↓',
           enabled: !creatingProject,
           activationKeys: const [LogicalKey.arrowUp, LogicalKey.arrowDown],
@@ -244,7 +207,7 @@ class MainScreen extends StatelessComponent {
           },
         ),
         Button(
-          name: 'Select Option',
+          name: 'Select',
           activationChar: '←→',
           enabled: !creatingProject,
           activationKeys: const [LogicalKey.arrowLeft, LogicalKey.arrowRight],
@@ -258,14 +221,6 @@ class MainScreen extends StatelessComponent {
                 break;
             }
             holder.markDirty();
-          },
-        ),
-        Button(
-          name: 'Help',
-          activationChar: 'H',
-          activationKeys: const [LogicalKey.keyH],
-          onActivate: (_) {
-            onToggleHelp.call();
           },
         ),
         Button(

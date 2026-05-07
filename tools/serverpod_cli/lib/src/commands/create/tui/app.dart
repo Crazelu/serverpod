@@ -36,8 +36,6 @@ class ServerpodCreateAppState extends ServerpodAppState<ServerpodCreateApp> {
 
   @override
   Component buildApp(BuildContext context) {
-    final state = component.holder.state;
-
     return Focusable(
       focused: true,
       onKeyEvent: _handleKeyEvent,
@@ -48,10 +46,6 @@ class ServerpodCreateAppState extends ServerpodAppState<ServerpodCreateApp> {
         scrollController: _scrollController,
         onCreate: component.onCreate,
         onQuit: component.onQuit,
-        onToggleHelp: () {
-          state.showHelp = !state.showHelp;
-          rebuild();
-        },
       ),
     );
   }
@@ -63,15 +57,6 @@ class ServerpodCreateAppState extends ServerpodAppState<ServerpodCreateApp> {
       component.onSkipFlutterBuild();
       return true;
     }
-
-    // Dismiss help overlay.
-    if (state.showHelp && event.logicalKey == LogicalKey.escape) {
-      state.showHelp = false;
-      rebuild();
-      return true;
-    }
-    // When help is open, absorb all keys except H (toggle) and Q (quit).
-    if (state.showHelp) return true;
 
     // Scrolling.
     final c = state.creatingProject ? _logScrollController : _scrollController;
