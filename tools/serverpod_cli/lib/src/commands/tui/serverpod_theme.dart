@@ -1,5 +1,10 @@
 import 'package:nocterm/nocterm.dart';
 
+const _serverpodBlueDark = Color.fromRGB(147, 197, 253);
+const _serverpodBlueLight = Color.fromRGB(59, 130, 246);
+const _hightlightDark = Color(0xff3b3937);
+const _highlightLight = Color(0xffedeae6);
+
 /// Serverpod-specific TUI theme colors layered on top of [TuiThemeData].
 class ServerpodThemeData {
   const ServerpodThemeData({
@@ -14,6 +19,7 @@ class ServerpodThemeData {
     required this.failure,
     required this.subtleDivider,
     required this.brightText,
+    required this.highlight,
   });
 
   ServerpodThemeData copyWith({
@@ -28,6 +34,7 @@ class ServerpodThemeData {
     Color? failure,
     Color? subtleDivider,
     Color? brightText,
+    Color? highlight,
   }) {
     return ServerpodThemeData(
       activationKey: activationKey ?? this.activationKey,
@@ -41,6 +48,7 @@ class ServerpodThemeData {
       failure: failure ?? this.failure,
       subtleDivider: subtleDivider ?? this.subtleDivider,
       brightText: brightText ?? this.brightText,
+      highlight: highlight ?? this.highlight,
     );
   }
 
@@ -69,6 +77,9 @@ class ServerpodThemeData {
   /// Color for bright texts.
   final Color brightText;
 
+  /// Color for highlighted elements.
+  final Color highlight;
+
   /// Derives a [ServerpodThemeData] from a nocterm [TuiThemeData].
   ///
   /// Semantic slots map to the closest [TuiThemeData] role:
@@ -77,10 +88,12 @@ class ServerpodThemeData {
   /// (active tab, spinner, info) use `primary` while the activation key
   /// uses `secondary` to stand apart from the active-tab color.
   factory ServerpodThemeData.fromTuiTheme(TuiThemeData theme) {
+    final darkThemed = theme.brightness == Brightness.dark;
+    final blue = darkThemed ? _serverpodBlueDark : _serverpodBlueLight;
     return ServerpodThemeData(
-      activationKey: Colors.blue,
-      activeTab: theme.primary,
-      spinner: theme.primary,
+      activationKey: blue,
+      activeTab: blue,
+      spinner: blue,
       debugLevel: theme.outline,
       infoLevel: theme.primary,
       warningLevel: theme.warning,
@@ -88,17 +101,16 @@ class ServerpodThemeData {
       success: theme.success,
       failure: theme.error,
       subtleDivider: theme.outlineVariant,
-      brightText: theme.brightness == Brightness.dark
-          ? Colors.brightWhite
-          : Colors.brightBlack,
+      brightText: darkThemed ? Colors.brightWhite : Colors.brightBlack,
+      highlight: darkThemed ? _hightlightDark : _highlightLight,
     );
   }
 
   /// Default dark theme.
   static const dark = ServerpodThemeData(
-    activationKey: Colors.magenta,
-    activeTab: Colors.cyan,
-    spinner: Colors.cyan,
+    activationKey: _serverpodBlueDark,
+    activeTab: _serverpodBlueDark,
+    spinner: _serverpodBlueDark,
     debugLevel: Colors.gray,
     infoLevel: Colors.blue,
     warningLevel: Colors.yellow,
@@ -107,6 +119,7 @@ class ServerpodThemeData {
     failure: Colors.red,
     subtleDivider: Colors.gray,
     brightText: Colors.brightWhite,
+    highlight: _hightlightDark,
   );
 }
 

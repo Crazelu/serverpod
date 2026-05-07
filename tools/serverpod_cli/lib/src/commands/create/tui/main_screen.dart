@@ -112,7 +112,7 @@ class MainScreen extends StatelessComponent {
       padding: const EdgeInsets.only(bottom: 1),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 1),
-        color: focused ? theme.subtleDivider : null,
+        color: focused ? theme.highlight : null,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
