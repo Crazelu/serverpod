@@ -47,6 +47,7 @@ Future<void> runServerpodApp(
   }
 
   void onShutDownSignalDelegated(ProcessSignal _) {
+    _restoreServerpodTerminal();
     onShutdownSignal!.call();
   }
 
