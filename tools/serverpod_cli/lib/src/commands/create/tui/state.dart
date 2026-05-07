@@ -44,13 +44,15 @@ class CreateConfigState extends ServerpodState {
   /// based on provided [template].
   void _resetState(ServerpodTemplateType template) {
     configValues.clear();
-    _stateValues.clear();
-    _optionStateValues.clear();
     for (final config in ServerpodCreateConfig.values) {
-      if (!config.templates.contains(template)) continue;
+      if (!config.templates.contains(template)) {
+        _stateValues.remove(config);
+        _optionStateValues.remove(config);
+        continue;
+      }
       configValues.add(config);
-      _stateValues[config] = config.defaultOption;
-      _optionStateValues[config] = ServerpodCreateConfigState(config);
+      _stateValues[config] ??= config.defaultOption;
+      _optionStateValues[config] ??= ServerpodCreateConfigState(config);
     }
 
     _maxFocusedConfigIndex = configValues.length - 1;
@@ -80,42 +82,12 @@ class CreateConfigState extends ServerpodState {
     } else if (_focusedConfigIndex < 0) {
       _focusedConfigIndex = maxFocusedConfigIndex;
     }
-    _snapFocusedOptionIfNeeded();
-  }
-
-  /// True when [option] cannot be chosen for [config] because a
-  /// [ServerpodCreateConfig.requirements] clause is not satisfied.
-  bool isOptionConstrained(
-    ServerpodCreateConfig config,
-    ConfigOption option,
-  ) {
-    for (final req in config.requirements) {
-      if (_isRequirementUnsatisfied(req)) {
-        return option != req.disabledOption;
-      }
-    }
-    return false;
   }
 
   /// True when [config] is partially locked because at least one requirement
   /// on another config is not satisfied.
   bool isConfigConstrained(ServerpodCreateConfig config) {
     return config.requirements.any(_isRequirementUnsatisfied);
-  }
-
-  void _snapFocusedOptionIfNeeded() {
-    final config = configValues[_focusedConfigIndex];
-    final configState = _optionStateValues[config];
-    if (configState == null) return;
-    final option = config.options[configState.focusedOptionIndex];
-    if (!isOptionConstrained(config, option)) return;
-    for (var i = 0; i < config.options.length; i++) {
-      final o = config.options[i];
-      if (!isOptionConstrained(config, o)) {
-        configState._focusedOptionIndex = i;
-        return;
-      }
-    }
   }
 
   /// True when [req] is not satisfied given current selections.
@@ -133,8 +105,20 @@ class CreateConfigState extends ServerpodState {
     final newSelection = config.options[focusedOptionIndex];
     _stateValues[config] = newSelection;
     _evaluateRequirements();
+    _resetStateIfNeeded();
+  }
 
-    // Recreate states for new selected template type
+  void updateSelectedOption(ServerpodCreateConfig config, ConfigOption option) {
+    _stateValues[config] = option;
+    _focusedConfigIndex = configValues.indexOf(config);
+    final configState = _optionStateValues[config];
+    configState?._focusedOptionIndex = config.options.indexOf(option);
+    _evaluateRequirements();
+    _resetStateIfNeeded();
+  }
+
+  void _resetStateIfNeeded() {
+    // Reset state for new selected template type
     if (_focusedConfigIndex == 0) {
       final selected = getSelectedOptionFor<TemplateTypeOption>(
         ServerpodCreateConfig.template,

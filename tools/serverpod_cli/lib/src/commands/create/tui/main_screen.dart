@@ -64,7 +64,6 @@ class MainScreen extends StatelessComponent {
           child: Stack(
             children: [
               BorderedBox(
-                color: theme.activeTab,
                 child: Column(
                   children: [
                     _buildHeader(theme),
@@ -108,15 +107,12 @@ class MainScreen extends StatelessComponent {
   }
 
   Component _buildForm(ServerpodThemeData theme) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 1),
-      child: Scrollbar(
+    return Scrollbar(
+      controller: scrollController,
+      thumbVisibility: true,
+      child: ListView(
         controller: scrollController,
-        thumbVisibility: true,
-        child: ListView(
-          controller: scrollController,
-          children: [_buildConfigurations(theme)],
-        ),
+        children: [_buildConfigurations(theme)],
       ),
     );
   }
@@ -133,7 +129,6 @@ class MainScreen extends StatelessComponent {
             config.$2,
             config.$1 == state.focusedConfigIndex,
           ),
-          const SizedBox(height: 1),
         ],
       ],
     );
@@ -145,44 +140,46 @@ class MainScreen extends StatelessComponent {
     bool focused,
   ) {
     final state = holder.state;
+
+    if (state.isConfigConstrained(config)) return const SizedBox.shrink();
+
     final selectedOption = state.getSelectedOptionFor(config);
 
-    bool isOptionFocused(int optionIndex) {
-      return focused &&
-          state.getStateFor(config)?.focusedOptionIndex == optionIndex;
-    }
-
-    final titleColor = !state.isConfigConstrained(config)
-        ? selectedOption?.isUserDisabled ?? false
-              ? Colors.white
-              : theme.success
-        : theme.failure;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          config.label,
-          style: TextStyle(
-            color: titleColor,
-            fontWeight: focused ? FontWeight.bold : FontWeight.dim,
-          ),
-        ),
-        Row(
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 1),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 1),
+        color: focused ? theme.subtleDivider : null,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            for (final option in config.options.indexed) ...[
-              _buildConfigurationOption(
-                theme,
-                option.$2,
-                selected: selectedOption == option.$2,
-                focused: isOptionFocused(option.$1),
-                enabled: !state.isOptionConstrained(config, option.$2),
+            Text(
+              config.label,
+              style: const TextStyle(
+                color: Color.defaultColor,
+                fontWeight: FontWeight.bold,
               ),
-              const SizedBox(width: 2),
-            ],
+            ),
+            Row(
+              children: [
+                for (final option in config.options.indexed) ...[
+                  _buildConfigurationOption(
+                    theme,
+                    option.$2,
+                    selected: selectedOption == option.$2,
+                    style: const TextStyle(color: Color.defaultColor),
+                    onTap: () {
+                      state.updateSelectedOption(config, option.$2);
+                      holder.markDirty();
+                    },
+                  ),
+                  const SizedBox(width: 2),
+                ],
+              ],
+            ),
           ],
         ),
-      ],
+      ),
     );
   }
 
@@ -190,14 +187,16 @@ class MainScreen extends StatelessComponent {
     ServerpodThemeData theme,
     ConfigOption option, {
     required bool selected,
-    required bool focused,
-    required bool enabled,
+    required TextStyle style,
+    required VoidCallback onTap,
   }) {
-    return RadioButton(
-      label: option.label,
-      focused: focused,
-      value: selected,
-      enabled: enabled,
+    return GestureDetector(
+      onTap: onTap,
+      child: RadioButton(
+        label: option.label,
+        value: selected,
+        style: style,
+      ),
     );
   }
 
@@ -286,12 +285,5 @@ class MainScreen extends StatelessComponent {
       state: holder.state,
       scrollController: logScrollController,
     );
-  }
-}
-
-extension on ConfigOption {
-  bool get isUserDisabled {
-    return (this is BoolConfigOption && this == BoolConfigOption.disabled) ||
-        (this is DatabaseConfigOption && this == DatabaseConfigOption.none);
   }
 }

@@ -73,24 +73,31 @@ class Button extends StatelessComponent {
         }
         return false;
       },
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            activationChar,
-            style: TextStyle(
-              color: enabled ? st.activationKey : st.subtleDivider,
-              fontWeight: enabled ? FontWeight.bold : FontWeight.dim,
+      child: GestureDetector(
+        onTap: () {
+          if (enabled && activationKeys.length == 1) {
+            onActivate(activationKeys.first);
+          }
+        },
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              activationChar,
+              style: TextStyle(
+                color: enabled ? st.activationKey : st.subtleDivider,
+                fontWeight: enabled ? FontWeight.bold : FontWeight.dim,
+              ),
             ),
-          ),
-          const Text(' '),
-          Text(
-            name,
-            style: TextStyle(
-              fontWeight: enabled ? FontWeight.normal : FontWeight.dim,
+            const Text(' '),
+            Text(
+              name,
+              style: TextStyle(
+                fontWeight: enabled ? FontWeight.normal : FontWeight.dim,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -354,36 +361,25 @@ class ButtonBar extends StatelessComponent {
 class RadioButton extends StatelessComponent {
   const RadioButton({
     required this.label,
-    required this.focused,
     required this.value,
-    this.enabled = true,
+    this.style,
   });
 
   final bool value;
-  final bool focused;
   final String label;
-
-  /// When false, the option is shown dimmed and must not receive focus
-  /// in navigation logic.
-  final bool enabled;
+  final TextStyle? style;
 
   @override
   Component build(BuildContext context) {
     final st = ServerpodTheme.of(context);
     final indicator = value ? '◉' : '○';
-    final Color? color = enabled ? null : st.subtleDivider;
-    final style = TextStyle(
-      color: color,
-      fontWeight: enabled
-          ? (focused ? FontWeight.normal : FontWeight.dim)
-          : FontWeight.dim,
-    );
+    final effectiveStyle = style ?? TextStyle(color: st.subtleDivider);
 
     return Row(
       children: [
-        Text(indicator, style: style),
-        const SizedBox(width: 2),
-        Text(label, style: style),
+        Text(indicator, style: effectiveStyle),
+        const SizedBox(width: 1),
+        Text(label, style: effectiveStyle),
       ],
     );
   }
