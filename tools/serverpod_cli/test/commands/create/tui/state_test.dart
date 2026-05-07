@@ -374,7 +374,7 @@ void main() {
           authSelection = state.getSelectedOptionFor<BoolConfigOption>(
             ServerpodCreateConfig.auth,
           );
-          expect(authSelection, BoolConfigOption.disabled);
+          expect(authSelection, isNull);
         },
       );
 
@@ -391,36 +391,13 @@ void main() {
           });
 
           test(
-            'then auth config option is disabled',
+            'then auth config option is null',
             () {
               final selected = state.getSelectedOptionFor<BoolConfigOption>(
                 ServerpodCreateConfig.auth,
               );
 
-              expect(selected, BoolConfigOption.disabled);
-            },
-          );
-
-          test(
-            'when enabling auth config option, '
-            'then it is not enabled',
-            () {
-              // Move to auth config
-              state.updateFocusedConfig(3);
-
-              var selected = state.getSelectedOptionFor<BoolConfigOption>(
-                ServerpodCreateConfig.auth,
-              );
-
-              expect(selected, BoolConfigOption.disabled);
-
-              // Select BoolConfigOption.enabled
-              state.selectConfigOption(-1);
-
-              selected = state.getSelectedOptionFor<BoolConfigOption>(
-                ServerpodCreateConfig.auth,
-              );
-              expect(selected, BoolConfigOption.disabled);
+              expect(selected, isNull);
             },
           );
         },
@@ -498,11 +475,6 @@ void main() {
             expect(context.auth, isFalse);
 
             // Select DatabaseConfigOption.postgres config option
-            state.selectConfigOption(-1);
-
-            // Move focus to auth config
-            state.updateFocusedConfig(3);
-            // Select enabled config option
             state.selectConfigOption(-1);
 
             context = state.toTemplateContext();

@@ -40,12 +40,14 @@ class CreateConfigState extends ServerpodState {
         ServerpodCreateConfig.template,
       )?.toTemplate;
 
-  /// Resets internal state and restores the state for template config
+  /// Updates internal state and restores the state for template config
   /// based on provided [template].
+  ///
+  /// Configurations that have unmet requirements based on the current state are removed.
   void _resetState(ServerpodTemplateType template) {
     configValues.clear();
     for (final config in ServerpodCreateConfig.values) {
-      if (!config.templates.contains(template)) {
+      if (!config.templates.contains(template) || isConfigConstrained(config)) {
         _stateValues.remove(config);
         _optionStateValues.remove(config);
         continue;
@@ -105,7 +107,7 @@ class CreateConfigState extends ServerpodState {
     final newSelection = config.options[focusedOptionIndex];
     _stateValues[config] = newSelection;
     _evaluateRequirements();
-    _resetStateIfNeeded();
+    _updateState();
   }
 
   void updateSelectedOption(ServerpodCreateConfig config, ConfigOption option) {
@@ -114,18 +116,16 @@ class CreateConfigState extends ServerpodState {
     final configState = _optionStateValues[config];
     configState?._focusedOptionIndex = config.options.indexOf(option);
     _evaluateRequirements();
-    _resetStateIfNeeded();
+    _updateState();
   }
 
-  void _resetStateIfNeeded() {
-    // Reset state for new selected template type
-    if (_focusedConfigIndex == 0) {
-      final selected = getSelectedOptionFor<TemplateTypeOption>(
-        ServerpodCreateConfig.template,
-      );
-      if (selected == null) return;
-      _resetState(selected.toTemplate);
-    }
+  void _updateState() {
+    // Reset state for current template type
+    final selected = getSelectedOptionFor<TemplateTypeOption>(
+      ServerpodCreateConfig.template,
+    );
+    if (selected == null) return;
+    _resetState(selected.toTemplate);
   }
 
   /// Evaluates requirements defined for each [ServerpodCreateConfig].
