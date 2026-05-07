@@ -54,7 +54,6 @@ class MainScreen extends StatelessComponent {
               child: Stack(
                 children: [
                   BorderedBox(
-                    color: st.activeTab,
                     child: Column(
                       children: [
                         Expanded(child: _buildTabContent()),
@@ -90,19 +89,42 @@ class MainScreen extends StatelessComponent {
     const labels = ['Log Messages', 'Raw server output'];
     return Row(
       children: [
-        for (var i = 0; i < labels.length; i++)
-          if (i == state.selectedTab) ...[
-            Text('▐', style: TextStyle(color: st.activeTab)),
-            Text(
-              labels[i],
-              style: TextStyle(color: st.activeTab, reverse: true),
+        for (var i = 0; i < labels.length; i++) ...[
+          GestureDetector(
+            onTap: () => onTabChanged(i),
+            child: _buildTab(
+              st,
+              label: labels[i],
+              selected: state.selectedTab == i,
             ),
-            Text('▌─', style: TextStyle(color: st.activeTab)),
-          ] else ...[
-            Text(' ', style: TextStyle(color: st.activeTab)),
-            Text(labels[i], style: const TextStyle(fontWeight: FontWeight.dim)),
-            Text(' ─', style: TextStyle(color: st.activeTab)),
-          ],
+          ),
+          if (i < labels.length - 1)
+            Text('─', style: TextStyle(color: st.activeTab)),
+        ],
+      ],
+    );
+  }
+
+  Component _buildTab(
+    ServerpodThemeData theme, {
+    required String label,
+    required bool selected,
+  }) {
+    return Row(
+      children: [
+        if (selected) ...[
+          Text('▐', style: TextStyle(color: theme.activeTab)),
+          Text(
+            label,
+            style: TextStyle(color: theme.activeTab, reverse: true),
+          ),
+          Text('▌', style: TextStyle(color: theme.activeTab)),
+        ] else ...[
+          Text(
+            ' $label ',
+            style: const TextStyle(fontWeight: FontWeight.dim),
+          ),
+        ],
       ],
     );
   }
