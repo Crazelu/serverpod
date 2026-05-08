@@ -1,7 +1,6 @@
 import 'package:nocterm/nocterm.dart';
 
-const _serverpodBlueDark = Color.fromRGB(147, 197, 253);
-const _serverpodBlueLight = Color.fromRGB(31, 68, 130);
+const _serverpodBlue = Color.fromRGB(147, 197, 253);
 const _highlightDark = Color(0xff3b3937);
 const _highlightLight = Color(0xffedeae6);
 
@@ -9,6 +8,7 @@ const _highlightLight = Color(0xffedeae6);
 class ServerpodThemeData {
   const ServerpodThemeData({
     required this.primary,
+    required this.activationKey,
     required this.spinner,
     required this.debugLevel,
     required this.infoLevel,
@@ -23,6 +23,7 @@ class ServerpodThemeData {
 
   ServerpodThemeData copyWith({
     Color? primary,
+    Color? activationKey,
     Color? spinner,
     Color? debugLevel,
     Color? infoLevel,
@@ -36,6 +37,7 @@ class ServerpodThemeData {
   }) {
     return ServerpodThemeData(
       primary: primary ?? this.primary,
+      activationKey: activationKey ?? this.activationKey,
       spinner: spinner ?? this.spinner,
       debugLevel: debugLevel ?? this.debugLevel,
       infoLevel: infoLevel ?? this.infoLevel,
@@ -51,6 +53,9 @@ class ServerpodThemeData {
 
   /// Primary color;
   final Color primary;
+
+  /// Color for button activation characters (R, M, A, Q).
+  final Color activationKey;
 
   /// Color for the spinning progress indicator.
   final Color spinner;
@@ -83,10 +88,10 @@ class ServerpodThemeData {
   /// uses `secondary` to stand apart from the active-tab color.
   factory ServerpodThemeData.fromTuiTheme(TuiThemeData theme) {
     final darkThemed = theme.brightness == Brightness.dark;
-    final blue = darkThemed ? _serverpodBlueDark : _serverpodBlueLight;
     return ServerpodThemeData(
-      primary: blue,
-      spinner: blue,
+      primary: _serverpodBlue,
+      activationKey: Colors.magenta,
+      spinner: _serverpodBlue,
       debugLevel: theme.outline,
       infoLevel: theme.primary,
       warningLevel: theme.warning,
@@ -101,8 +106,9 @@ class ServerpodThemeData {
 
   /// Default dark theme.
   static const dark = ServerpodThemeData(
-    primary: _serverpodBlueDark,
-    spinner: _serverpodBlueDark,
+    primary: _serverpodBlue,
+    activationKey: Colors.magenta,
+    spinner: _serverpodBlue,
     debugLevel: Colors.gray,
     infoLevel: Colors.blue,
     warningLevel: Colors.yellow,
