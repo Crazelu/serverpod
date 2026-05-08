@@ -1,7 +1,7 @@
 import 'package:nocterm/nocterm.dart';
 
 const _serverpodBlueDark = Color.fromRGB(147, 197, 253);
-const _serverpodBlueLight = Color.fromRGB(59, 130, 246);
+const _serverpodBlueLight = Color.fromRGB(31, 68, 130);
 const _highlightDark = Color(0xff3b3937);
 const _highlightLight = Color(0xffedeae6);
 
