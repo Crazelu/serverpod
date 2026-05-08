@@ -2,10 +2,10 @@ import 'package:nocterm/nocterm.dart';
 // ignore: implementation_imports
 import 'package:nocterm/src/components/render_ascii_text.dart'
     show AsciiLayoutEngine;
-import 'package:serverpod_cli/src/commands/tui/components.dart';
+import 'package:serverpod_cli/src/commands/tui/components/bordered_box.dart';
+import 'package:serverpod_cli/src/commands/tui/components/shimmer.dart';
+import 'package:serverpod_cli/src/commands/tui/components/unconstrained_box.dart';
 import 'package:serverpod_cli/src/commands/tui/serverpod_theme.dart';
-import 'package:serverpod_cli/src/commands/tui/shimmer.dart';
-import 'package:serverpod_cli/src/commands/tui/unconstrained_box.dart';
 
 /// Splash screen showing the Serverpod logo and ASCII art title
 /// with shimmer effect, plus a subtitle with gradient on "ultimate".

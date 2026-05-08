@@ -6,7 +6,7 @@ typedef HelpOverlayBindings = List<(String, List<(String, String)>)>;
 /// Help overlay showing all keybindings.
 ///
 /// Pass [controller] to drive the help body's scroll position from outside.
-/// hen null, the overlay manages its own controller.
+/// When null, the overlay manages its own controller.
 class HelpOverlay extends StatefulComponent {
   const HelpOverlay({super.key, this.bindings, this.controller});
 

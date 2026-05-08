@@ -1,7 +1,11 @@
 import 'package:nocterm/nocterm.dart';
 import 'package:serverpod_cli/src/commands/create/tui/config.dart';
 import 'package:serverpod_cli/src/commands/create/tui/state_holder.dart';
-import 'package:serverpod_cli/src/commands/tui/components.dart';
+import 'package:serverpod_cli/src/commands/tui/components/bordered_box.dart';
+import 'package:serverpod_cli/src/commands/tui/components/button.dart';
+import 'package:serverpod_cli/src/commands/tui/components/button_bar.dart';
+import 'package:serverpod_cli/src/commands/tui/components/log_viewer.dart';
+import 'package:serverpod_cli/src/commands/tui/components/radio_button.dart';
 import 'package:serverpod_cli/src/commands/tui/serverpod_theme.dart';
 
 class MainScreen extends StatelessComponent {

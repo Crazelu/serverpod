@@ -1,11 +1,15 @@
 import 'package:nocterm/nocterm.dart' hide LogEntry;
-import 'package:serverpod_cli/src/commands/tui/components.dart';
+import 'package:serverpod_cli/src/commands/tui/components/bordered_box.dart';
+import 'package:serverpod_cli/src/commands/tui/components/button.dart';
+import 'package:serverpod_cli/src/commands/tui/components/button_bar.dart';
+import 'package:serverpod_cli/src/commands/tui/components/log_operation.dart';
+import 'package:serverpod_cli/src/commands/tui/components/tab_bar.dart';
 import 'package:serverpod_cli/src/commands/tui/run_app.dart';
 import 'package:serverpod_cli/src/commands/tui/serverpod_theme.dart';
 import 'package:serverpod_cli/src/commands/tui/state.dart';
 import 'package:serverpod_shared/log.dart';
 
-import '../../tui/help_overlay.dart';
+import '../../tui/components/help_overlay.dart';
 import 'loading_screen.dart';
 import 'state.dart';
 
@@ -51,29 +55,24 @@ class MainScreen extends StatelessComponent {
         Column(
           children: [
             Expanded(
-              child: Stack(
-                children: [
-                  BorderedBox(
-                    child: Column(
-                      children: [
-                        Expanded(child: _buildTabContent()),
-                        // Pinned active operations
-                        if (state.activeOperations.isNotEmpty) ...[
-                          for (final op in state.activeOperations.values)
-                            TrackedOperationWidget(
-                              key: ValueKey(op.id),
-                              operation: op,
-                            ),
-                        ],
-                      ],
+              child: BorderedBox(
+                child: Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(left: 1),
+                      child: _buildTabBar(st),
                     ),
-                  ),
-                  // Tab labels overlaid on top border, offset past the corner.
-                  Padding(
-                    padding: const EdgeInsets.only(left: 1),
-                    child: _buildTabBar(st),
-                  ),
-                ],
+                    Expanded(child: _buildTabContent()),
+                    // Pinned active operations
+                    if (state.activeOperations.isNotEmpty) ...[
+                      for (final op in state.activeOperations.values)
+                        TrackedOperationWidget(
+                          key: ValueKey(op.id),
+                          operation: op,
+                        ),
+                    ],
+                  ],
+                ),
               ),
             ),
             _buildButtonBar(),
@@ -86,46 +85,10 @@ class MainScreen extends StatelessComponent {
   }
 
   Component _buildTabBar(ServerpodThemeData st) {
-    const labels = ['Log Messages', 'Raw server output'];
-    return Row(
-      children: [
-        for (var i = 0; i < labels.length; i++) ...[
-          GestureDetector(
-            onTap: () => onTabChanged(i),
-            child: _buildTabTitle(
-              st,
-              label: labels[i],
-              selected: state.selectedTab == i,
-            ),
-          ),
-          if (i < labels.length - 1)
-            Text('─', style: TextStyle(color: st.subtleDivider)),
-        ],
-      ],
-    );
-  }
-
-  Component _buildTabTitle(
-    ServerpodThemeData theme, {
-    required String label,
-    required bool selected,
-  }) {
-    return Row(
-      children: [
-        if (selected) ...[
-          Text('▐', style: TextStyle(color: theme.highlight)),
-          Text(
-            label,
-            style: TextStyle(
-              color: theme.brightText,
-              backgroundColor: theme.highlight,
-            ),
-          ),
-          Text('▌', style: TextStyle(color: theme.highlight)),
-        ] else ...[
-          Text(' $label ', style: TextStyle(color: theme.brightText)),
-        ],
-      ],
+    return TabBar(
+      labels: const ['Log Messages', 'Raw server output'],
+      selectedTab: state.selectedTab,
+      onTabChanged: onTabChanged,
     );
   }
 
