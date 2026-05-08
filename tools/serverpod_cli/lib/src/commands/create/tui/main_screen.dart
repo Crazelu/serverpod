@@ -63,8 +63,8 @@ class MainScreen extends StatelessComponent {
         children: [
           Text(
             title,
-            style: TextStyle(
-              color: theme.primary,
+            style: const TextStyle(
+              color: Color.defaultColor,
               fontWeight: FontWeight.bold,
             ),
           ),
