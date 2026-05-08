@@ -104,24 +104,16 @@ class _LoadingScreenState extends State<LoadingScreen>
   }) {
     return Container(
       margin: const EdgeInsets.all(2),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Shimmer(
-            highlightColor: highlightColor,
-            baseColor: baseColor,
-            child: UnconstrainedBox(
-              child: AsciiText(
-                'Serverpod',
-                font: AsciiFont.standard,
-                style: TextStyle(color: baseColor),
-              ),
-            ),
+      child: Shimmer(
+        highlightColor: highlightColor,
+        baseColor: baseColor,
+        child: UnconstrainedBox(
+          child: AsciiText(
+            'Serverpod',
+            font: AsciiFont.standard,
+            style: TextStyle(color: baseColor),
           ),
-          const SizedBox(height: 1),
-          _buildSubtitle(t),
-        ],
+        ),
       ),
     );
   }
@@ -131,68 +123,15 @@ class _LoadingScreenState extends State<LoadingScreen>
     required Color baseColor,
     required Color highlightColor,
   }) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Shimmer(
-          highlightColor: highlightColor,
-          baseColor: baseColor,
-          child: Text(
-            'Serverpod',
-            style: TextStyle(color: baseColor, fontWeight: FontWeight.bold),
-          ),
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+      child: Shimmer(
+        highlightColor: highlightColor,
+        baseColor: baseColor,
+        child: Text(
+          'Serverpod',
+          style: TextStyle(color: baseColor, fontWeight: FontWeight.bold),
         ),
-        _buildSubtitle(t),
-      ],
-    );
-  }
-
-  Component _buildSubtitle(double t) {
-    final theme = ServerpodTheme.of(context);
-    final white = Color.lerp(Color.defaultColor, theme.brightText, t)!;
-    final dim = Color.lerp(Color.defaultColor, Colors.gray, t)!;
-
-    const gradientColors = [
-      Color.fromRGB(180, 140, 200),
-      Color.fromRGB(200, 130, 180),
-      Color.fromRGB(220, 120, 160),
-      Color.fromRGB(230, 120, 150),
-      Color.fromRGB(220, 130, 160),
-      Color.fromRGB(200, 140, 180),
-      Color.fromRGB(180, 150, 190),
-      Color.fromRGB(170, 155, 195),
-    ];
-
-    final ultimateSpans = <InlineSpan>[
-      for (var i = 0; i < 'ultimate'.length; i++)
-        TextSpan(
-          text: 'ultimate'[i],
-          style: TextStyle(
-            color: Color.lerp(Color.defaultColor, gradientColors[i], t),
-            fontStyle: FontStyle.italic,
-          ),
-        ),
-    ];
-
-    return RichText(
-      textAlign: TextAlign.center,
-      text: TextSpan(
-        children: [
-          TextSpan(
-            text: ' The ',
-            style: TextStyle(color: white),
-          ),
-          ...ultimateSpans,
-          TextSpan(
-            text: ' backend for ',
-            style: TextStyle(color: dim),
-          ),
-          TextSpan(
-            text: 'Flutter',
-            style: TextStyle(color: white),
-          ),
-        ],
       ),
     );
   }
