@@ -2,7 +2,7 @@ import 'package:nocterm/nocterm.dart';
 
 const _serverpodBlueDark = Color.fromRGB(147, 197, 253);
 const _serverpodBlueLight = Color.fromRGB(59, 130, 246);
-const _hightlightDark = Color(0xff3b3937);
+const _highlightDark = Color(0xff3b3937);
 const _highlightLight = Color(0xffedeae6);
 
 /// Serverpod-specific TUI theme colors layered on top of [TuiThemeData].
@@ -95,7 +95,7 @@ class ServerpodThemeData {
       failure: theme.error,
       subtleDivider: theme.outlineVariant,
       brightText: darkThemed ? Colors.brightWhite : Colors.brightBlack,
-      highlight: darkThemed ? _hightlightDark : _highlightLight,
+      highlight: darkThemed ? _highlightDark : _highlightLight,
     );
   }
 
@@ -111,7 +111,7 @@ class ServerpodThemeData {
     failure: Colors.red,
     subtleDivider: Colors.gray,
     brightText: Colors.brightWhite,
-    highlight: _hightlightDark,
+    highlight: _highlightDark,
   );
 }
 
