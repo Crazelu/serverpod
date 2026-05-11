@@ -1,11 +1,15 @@
 import 'package:nocterm/nocterm.dart' hide LogEntry;
-import 'package:serverpod_cli/src/commands/tui/components.dart';
+import 'package:serverpod_cli/src/commands/tui/components/bordered_box.dart';
+import 'package:serverpod_cli/src/commands/tui/components/button.dart';
+import 'package:serverpod_cli/src/commands/tui/components/button_bar.dart';
+import 'package:serverpod_cli/src/commands/tui/components/log_operation.dart';
+import 'package:serverpod_cli/src/commands/tui/components/tab_bar.dart';
 import 'package:serverpod_cli/src/commands/tui/run_app.dart';
 import 'package:serverpod_cli/src/commands/tui/serverpod_theme.dart';
 import 'package:serverpod_cli/src/commands/tui/state.dart';
 import 'package:serverpod_shared/log.dart';
 
-import '../../tui/help_overlay.dart';
+import '../../tui/components/help_overlay.dart';
 import 'loading_screen.dart';
 import 'state.dart';
 
@@ -51,30 +55,24 @@ class MainScreen extends StatelessComponent {
         Column(
           children: [
             Expanded(
-              child: Stack(
-                children: [
-                  BorderedBox(
-                    color: st.activeTab,
-                    child: Column(
-                      children: [
-                        Expanded(child: _buildTabContent()),
-                        // Pinned active operations
-                        if (state.activeOperations.isNotEmpty) ...[
-                          for (final op in state.activeOperations.values)
-                            TrackedOperationWidget(
-                              key: ValueKey(op.id),
-                              operation: op,
-                            ),
-                        ],
-                      ],
+              child: BorderedBox(
+                child: Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(left: 1),
+                      child: _buildTabBar(st),
                     ),
-                  ),
-                  // Tab labels overlaid on top border, offset past the corner.
-                  Padding(
-                    padding: const EdgeInsets.only(left: 1),
-                    child: _buildTabBar(st),
-                  ),
-                ],
+                    Expanded(child: _buildTabContent()),
+                    // Pinned active operations
+                    if (state.activeOperations.isNotEmpty) ...[
+                      for (final op in state.activeOperations.values)
+                        TrackedOperationWidget(
+                          key: ValueKey(op.id),
+                          operation: op,
+                        ),
+                    ],
+                  ],
+                ),
               ),
             ),
             _buildButtonBar(),
@@ -87,23 +85,10 @@ class MainScreen extends StatelessComponent {
   }
 
   Component _buildTabBar(ServerpodThemeData st) {
-    const labels = ['Log Messages', 'Raw server output'];
-    return Row(
-      children: [
-        for (var i = 0; i < labels.length; i++)
-          if (i == state.selectedTab) ...[
-            Text('▐', style: TextStyle(color: st.activeTab)),
-            Text(
-              labels[i],
-              style: TextStyle(color: st.activeTab, reverse: true),
-            ),
-            Text('▌─', style: TextStyle(color: st.activeTab)),
-          ] else ...[
-            Text(' ', style: TextStyle(color: st.activeTab)),
-            Text(labels[i], style: const TextStyle(fontWeight: FontWeight.dim)),
-            Text(' ─', style: TextStyle(color: st.activeTab)),
-          ],
-      ],
+    return TabBar(
+      labels: const ['Log Messages', 'Raw server output'],
+      selectedTab: state.selectedTab,
+      onTabChanged: onTabChanged,
     );
   }
 

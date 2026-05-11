@@ -1,8 +1,11 @@
 import 'package:nocterm/nocterm.dart';
 import 'package:serverpod_cli/src/commands/create/tui/config.dart';
 import 'package:serverpod_cli/src/commands/create/tui/state_holder.dart';
-import 'package:serverpod_cli/src/commands/tui/components.dart';
-import 'package:serverpod_cli/src/commands/tui/help_overlay.dart';
+import 'package:serverpod_cli/src/commands/tui/components/bordered_box.dart';
+import 'package:serverpod_cli/src/commands/tui/components/button.dart';
+import 'package:serverpod_cli/src/commands/tui/components/button_bar.dart';
+import 'package:serverpod_cli/src/commands/tui/components/log_viewer.dart';
+import 'package:serverpod_cli/src/commands/tui/components/radio_button.dart';
 import 'package:serverpod_cli/src/commands/tui/serverpod_theme.dart';
 
 class MainScreen extends StatelessComponent {
@@ -14,7 +17,6 @@ class MainScreen extends StatelessComponent {
     required this.logScrollController,
     required this.onCreate,
     required this.onQuit,
-    required this.onToggleHelp,
   });
 
   final String name;
@@ -23,34 +25,6 @@ class MainScreen extends StatelessComponent {
   final ScrollController logScrollController;
   final VoidCallback onCreate;
   final VoidCallback onQuit;
-  final VoidCallback onToggleHelp;
-
-  static const _helpBindings = [
-    (
-      'Navigation',
-      [
-        ('k', 'Scroll up'),
-        ('j', 'Scroll down'),
-        ('Shift+↑', 'Scroll up ¼ screen'),
-        ('Shift+↓', 'Scroll down ¼ screen'),
-        ('u / Ctrl+u', 'Scroll up ½ screen'),
-        ('d / Ctrl+d', 'Scroll down ½ screen'),
-        ('PgUp / b / Backspace', 'Scroll up one screen'),
-        ('PgDn / Space / f', 'Scroll down one screen'),
-        ('Home / g', 'Go to start'),
-        ('End / G', 'Go to end'),
-      ],
-    ),
-    (
-      'Actions',
-      [
-        ('Enter', 'Create Project'),
-        ('↑↓', 'Navigate Options'),
-        ('←→', 'Select Option'),
-        ('Q', 'Quit'),
-      ],
-    ),
-  ];
 
   @override
   Component build(BuildContext context) {
@@ -61,23 +35,15 @@ class MainScreen extends StatelessComponent {
     return Column(
       children: [
         Expanded(
-          child: Stack(
-            children: [
-              BorderedBox(
-                color: theme.activeTab,
-                child: Column(
-                  children: [
-                    _buildHeader(theme),
-                    Expanded(
-                      child: creatingProject
-                          ? _buildLogView()
-                          : _buildForm(theme),
-                    ),
-                  ],
+          child: BorderedBox(
+            child: Column(
+              children: [
+                _buildHeader(theme),
+                Expanded(
+                  child: creatingProject ? _buildLogView() : _buildForm(theme),
                 ),
-              ),
-              if (state.showHelp) const HelpOverlay(bindings: _helpBindings),
-            ],
+              ],
+            ),
           ),
         ),
         _buildButtonBar(theme),
@@ -97,8 +63,8 @@ class MainScreen extends StatelessComponent {
         children: [
           Text(
             title,
-            style: TextStyle(
-              color: theme.activeTab,
+            style: const TextStyle(
+              color: Color.defaultColor,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -108,15 +74,12 @@ class MainScreen extends StatelessComponent {
   }
 
   Component _buildForm(ServerpodThemeData theme) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 1),
-      child: Scrollbar(
+    return Scrollbar(
+      controller: scrollController,
+      thumbVisibility: true,
+      child: SingleChildScrollView(
         controller: scrollController,
-        thumbVisibility: true,
-        child: ListView(
-          controller: scrollController,
-          children: [_buildConfigurations(theme)],
-        ),
+        child: _buildConfigurations(theme),
       ),
     );
   }
@@ -133,7 +96,6 @@ class MainScreen extends StatelessComponent {
             config.$2,
             config.$1 == state.focusedConfigIndex,
           ),
-          const SizedBox(height: 1),
         ],
       ],
     );
@@ -147,42 +109,41 @@ class MainScreen extends StatelessComponent {
     final state = holder.state;
     final selectedOption = state.getSelectedOptionFor(config);
 
-    bool isOptionFocused(int optionIndex) {
-      return focused &&
-          state.getStateFor(config)?.focusedOptionIndex == optionIndex;
-    }
-
-    final titleColor = !state.isConfigConstrained(config)
-        ? selectedOption?.isUserDisabled ?? false
-              ? Colors.white
-              : theme.success
-        : theme.failure;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          config.label,
-          style: TextStyle(
-            color: titleColor,
-            fontWeight: focused ? FontWeight.bold : FontWeight.dim,
-          ),
-        ),
-        Row(
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 1),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 1),
+        color: focused ? theme.highlight : null,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            for (final option in config.options.indexed) ...[
-              _buildConfigurationOption(
-                theme,
-                option.$2,
-                selected: selectedOption == option.$2,
-                focused: isOptionFocused(option.$1),
-                enabled: !state.isOptionConstrained(config, option.$2),
+            Text(
+              config.label,
+              style: const TextStyle(
+                color: Color.defaultColor,
+                fontWeight: FontWeight.bold,
               ),
-              const SizedBox(width: 2),
-            ],
+            ),
+            Row(
+              children: [
+                for (final option in config.options.indexed) ...[
+                  _buildConfigurationOption(
+                    theme,
+                    option.$2,
+                    selected: selectedOption == option.$2,
+                    style: const TextStyle(color: Color.defaultColor),
+                    onTap: () {
+                      state.updateSelectedOption(config, option.$2);
+                      holder.markDirty();
+                    },
+                  ),
+                  const SizedBox(width: 2),
+                ],
+              ],
+            ),
           ],
         ),
-      ],
+      ),
     );
   }
 
@@ -190,14 +151,16 @@ class MainScreen extends StatelessComponent {
     ServerpodThemeData theme,
     ConfigOption option, {
     required bool selected,
-    required bool focused,
-    required bool enabled,
+    required TextStyle style,
+    required VoidCallback onTap,
   }) {
-    return RadioButton(
-      label: option.label,
-      focused: focused,
-      value: selected,
-      enabled: enabled,
+    return GestureDetector(
+      onTap: onTap,
+      child: RadioButton(
+        label: option.label,
+        value: selected,
+        style: style,
+      ),
     );
   }
 
@@ -218,7 +181,7 @@ class MainScreen extends StatelessComponent {
           },
         ),
         Button(
-          name: 'Navigate Options',
+          name: 'Navigate',
           activationChar: '↑↓',
           enabled: !creatingProject,
           activationKeys: const [LogicalKey.arrowUp, LogicalKey.arrowDown],
@@ -245,7 +208,7 @@ class MainScreen extends StatelessComponent {
           },
         ),
         Button(
-          name: 'Select Option',
+          name: 'Select',
           activationChar: '←→',
           enabled: !creatingProject,
           activationKeys: const [LogicalKey.arrowLeft, LogicalKey.arrowRight],
@@ -259,14 +222,6 @@ class MainScreen extends StatelessComponent {
                 break;
             }
             holder.markDirty();
-          },
-        ),
-        Button(
-          name: 'Help',
-          activationChar: 'H',
-          activationKeys: const [LogicalKey.keyH],
-          onActivate: (_) {
-            onToggleHelp.call();
           },
         ),
         Button(
@@ -285,13 +240,7 @@ class MainScreen extends StatelessComponent {
     return LogViewerWidget(
       state: holder.state,
       scrollController: logScrollController,
+      keyboardScrollable: true,
     );
-  }
-}
-
-extension on ConfigOption {
-  bool get isUserDisabled {
-    return (this is BoolConfigOption && this == BoolConfigOption.disabled) ||
-        (this is DatabaseConfigOption && this == DatabaseConfigOption.none);
   }
 }

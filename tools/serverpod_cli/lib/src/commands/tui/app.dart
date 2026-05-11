@@ -1,7 +1,7 @@
 import 'package:meta/meta.dart';
 import 'package:nocterm/nocterm.dart';
 import 'package:serverpod_cli/src/commands/tui/app_state_holder.dart';
-import 'package:serverpod_cli/src/commands/tui/spinner.dart';
+import 'package:serverpod_cli/src/commands/tui/components/spinner.dart';
 
 /// A root TUI component.
 abstract class ServerpodApp<T extends ServerpodAppStateHolder>

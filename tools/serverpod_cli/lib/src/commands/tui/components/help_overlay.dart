@@ -6,7 +6,7 @@ typedef HelpOverlayBindings = List<(String, List<(String, String)>)>;
 /// Help overlay showing all keybindings.
 ///
 /// Pass [controller] to drive the help body's scroll position from outside.
-/// hen null, the overlay manages its own controller.
+/// When null, the overlay manages its own controller.
 class HelpOverlay extends StatefulComponent {
   const HelpOverlay({super.key, this.bindings, this.controller});
 
@@ -82,11 +82,11 @@ class _HelpOverlayState extends State<HelpOverlay> {
             color: theme.surface,
             border: BoxBorder.all(
               style: BoxBorderStyle.rounded,
-              color: st.activeTab,
+              color: st.primary,
             ),
             title: BorderTitle(
               text: 'Help',
-              style: TextStyle(color: st.activeTab),
+              style: TextStyle(color: st.primary),
             ),
           ),
           child: Padding(
@@ -106,7 +106,7 @@ class _HelpOverlayState extends State<HelpOverlay> {
                           Text(
                             section,
                             style: TextStyle(
-                              color: st.activeTab,
+                              color: st.primary,
                               fontWeight: FontWeight.bold,
                             ),
                           ),

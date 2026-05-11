@@ -1,10 +1,14 @@
 import 'package:nocterm/nocterm.dart';
 
+const _serverpodBlue = Color.fromRGB(147, 197, 253);
+const _highlightDark = Color(0xff3b3937);
+const _highlightLight = Color(0xffedeae6);
+
 /// Serverpod-specific TUI theme colors layered on top of [TuiThemeData].
 class ServerpodThemeData {
   const ServerpodThemeData({
+    required this.primary,
     required this.activationKey,
-    required this.activeTab,
     required this.spinner,
     required this.debugLevel,
     required this.infoLevel,
@@ -13,11 +17,13 @@ class ServerpodThemeData {
     required this.success,
     required this.failure,
     required this.subtleDivider,
+    required this.brightText,
+    required this.highlight,
   });
 
   ServerpodThemeData copyWith({
+    Color? primary,
     Color? activationKey,
-    Color? activeTab,
     Color? spinner,
     Color? debugLevel,
     Color? infoLevel,
@@ -26,10 +32,12 @@ class ServerpodThemeData {
     Color? success,
     Color? failure,
     Color? subtleDivider,
+    Color? brightText,
+    Color? highlight,
   }) {
     return ServerpodThemeData(
+      primary: primary ?? this.primary,
       activationKey: activationKey ?? this.activationKey,
-      activeTab: activeTab ?? this.activeTab,
       spinner: spinner ?? this.spinner,
       debugLevel: debugLevel ?? this.debugLevel,
       infoLevel: infoLevel ?? this.infoLevel,
@@ -38,14 +46,16 @@ class ServerpodThemeData {
       success: success ?? this.success,
       failure: failure ?? this.failure,
       subtleDivider: subtleDivider ?? this.subtleDivider,
+      brightText: brightText ?? this.brightText,
+      highlight: highlight ?? this.highlight,
     );
   }
 
+  /// Primary color;
+  final Color primary;
+
   /// Color for button activation characters (R, M, A, Q).
   final Color activationKey;
-
-  /// Color for the selected tab label.
-  final Color activeTab;
 
   /// Color for the spinning progress indicator.
   final Color spinner;
@@ -63,6 +73,12 @@ class ServerpodThemeData {
   /// Trailing divider on completed operations.
   final Color subtleDivider;
 
+  /// Color for bright texts.
+  final Color brightText;
+
+  /// Color for highlighted elements.
+  final Color highlight;
+
   /// Derives a [ServerpodThemeData] from a nocterm [TuiThemeData].
   ///
   /// Semantic slots map to the closest [TuiThemeData] role:
@@ -71,10 +87,11 @@ class ServerpodThemeData {
   /// (active tab, spinner, info) use `primary` while the activation key
   /// uses `secondary` to stand apart from the active-tab color.
   factory ServerpodThemeData.fromTuiTheme(TuiThemeData theme) {
+    final darkThemed = theme.brightness == Brightness.dark;
     return ServerpodThemeData(
+      primary: _serverpodBlue,
       activationKey: Colors.magenta,
-      activeTab: theme.primary,
-      spinner: theme.primary,
+      spinner: _serverpodBlue,
       debugLevel: theme.outline,
       infoLevel: theme.primary,
       warningLevel: theme.warning,
@@ -82,14 +99,16 @@ class ServerpodThemeData {
       success: theme.success,
       failure: theme.error,
       subtleDivider: theme.outlineVariant,
+      brightText: darkThemed ? Colors.brightWhite : Colors.brightBlack,
+      highlight: darkThemed ? _highlightDark : _highlightLight,
     );
   }
 
   /// Default dark theme.
   static const dark = ServerpodThemeData(
+    primary: _serverpodBlue,
     activationKey: Colors.magenta,
-    activeTab: Colors.cyan,
-    spinner: Colors.cyan,
+    spinner: _serverpodBlue,
     debugLevel: Colors.gray,
     infoLevel: Colors.blue,
     warningLevel: Colors.yellow,
@@ -97,6 +116,8 @@ class ServerpodThemeData {
     success: Colors.green,
     failure: Colors.red,
     subtleDivider: Colors.gray,
+    brightText: Colors.brightWhite,
+    highlight: _highlightDark,
   );
 }
 
