@@ -5,6 +5,8 @@ import 'dart:io';
 import 'package:serverpod_cli/src/commands/messages.dart';
 import 'package:serverpod_cli/src/util/serverpod_cli_logger.dart';
 
+/// Manages the flutter run subprocess lifecycle.
+/// Handles spawning, signal forwarding, output streaming and graceful shutdown.
 class FlutterProcess {
   FlutterProcess({
     required String flutterPackageDir,
