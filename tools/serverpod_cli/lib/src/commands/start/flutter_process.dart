@@ -48,7 +48,7 @@ class FlutterProcess {
 
     // Enable raw keyboard input if process is spawn
     // in --no-tui mode.
-    if (!_spawnFromTui) {
+    if (!_spawnFromTui && stdin.hasTerminal) {
       originalEchoMode = stdin.echoMode;
       originalLineMode = stdin.lineMode;
       stdin.echoMode = false;
