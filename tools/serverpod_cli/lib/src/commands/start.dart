@@ -10,6 +10,7 @@ import 'package:serverpod_cli/analyzer.dart';
 import 'package:serverpod_cli/src/commands/generate.dart';
 import 'package:serverpod_cli/src/commands/messages.dart';
 import 'package:serverpod_cli/src/commands/start/file_watcher.dart';
+import 'package:serverpod_cli/src/commands/start/flutter_process.dart';
 import 'package:serverpod_cli/src/commands/start/kernel_compiler.dart';
 import 'package:serverpod_cli/src/commands/start/mcp_server.dart';
 import 'package:serverpod_cli/src/commands/start/mcp_socket.dart';
@@ -74,6 +75,13 @@ enum StartOption<V> implements OptionDefinition<V> {
       helpText: 'Show interactive terminal UI.',
     ),
   ),
+  flutter(
+    FlagOption(
+      argName: 'flutter',
+      defaultsTo: true,
+      helpText: 'Launch the Flutter app.',
+    ),
+  ),
   ;
 
   const StartOption(this.option);
@@ -117,6 +125,7 @@ class StartCommand extends ServerpodCommand<StartOption> {
   ) async {
     final watch = commandConfig.value(StartOption.watch);
     final useTui = commandConfig.value(StartOption.tui) && stdout.hasTerminal;
+    final launchFlutterApp = commandConfig.value(StartOption.flutter);
 
     // In TUI mode, start the UI immediately and do all setup in onReady.
     // This avoids a visible delay from config loading and Docker checks.
@@ -135,6 +144,7 @@ class StartCommand extends ServerpodCommand<StartOption> {
       final exitCode = await _runWithTui(
         commandConfig: commandConfig,
         watch: watch,
+        launchFlutterApp: launchFlutterApp,
         serverArgs: argResults?.rest ?? [],
         config: config,
       );
@@ -184,6 +194,7 @@ class StartCommand extends ServerpodCommand<StartOption> {
         serverArgs: serverArgs,
         watch: watch,
         docker: docker,
+        launchFlutterApp: launchFlutterApp,
         shutdown: shutdown,
       );
       switch (result) {
@@ -333,9 +344,13 @@ Future<WatchLoopSetupResult> _setupWatchLoop({
   required ServerArgsRef serverArgs,
   required bool watch,
   required bool docker,
+  required bool launchFlutterApp,
   required _ShutdownSignal shutdown,
+  bool useTui = false,
   IOSink? serverStdoutSink,
   IOSink? serverStderrSink,
+  IOSink? flutterStdoutSink,
+  IOSink? flutterStderrSink,
   Future<void> Function(ServerProcess server)? onServerStart,
   List<Object> Function()? mcpGetLogHistory,
 }) async {
@@ -489,6 +504,19 @@ Future<WatchLoopSetupResult> _setupWatchLoop({
     return true;
   });
 
+  FlutterProcess? flutterProcess;
+
+  if (launchFlutterApp) {
+    flutterProcess = FlutterProcess(
+      flutterPackageDir: p.joinAll(config.flutterPackagePathParts),
+      spawnFromTui: useTui,
+      stdoutSink: flutterStdoutSink,
+      stderrSink: flutterStderrSink,
+    );
+
+    await flutterProcess.start();
+  }
+
   // Construct the watch session.
   final runMode = runModeFromServerArgs(serverArgs.value);
   session = WatchSession(
@@ -505,6 +533,7 @@ Future<WatchLoopSetupResult> _setupWatchLoop({
     },
     createServer: serverProcessFactory,
     initialServer: initialServerProcess,
+    flutterProcess: flutterProcess,
     generatedDirPaths: config.generatedDirPaths,
     applyMigrationsAction: () => _applyMigrationsForSession(
       serverDir: serverDir,
@@ -547,6 +576,7 @@ Future<WatchLoopSetupResult> _setupWatchLoop({
 
   // File watcher (watch mode only).
   StreamSubscription<void>? fileChangeSub;
+  StreamSubscription<void>? flutterFileChangeSub;
   if (watch) {
     final watcher = FileWatcher(
       watchPaths: {
@@ -558,9 +588,24 @@ Future<WatchLoopSetupResult> _setupWatchLoop({
         ),
       },
     );
+
     fileChangeSub = watcher.onFilesChanged
         .asyncMapBuffer((events) => session.handleFileChange(events.merge()))
         .listen((_) {});
+
+    FileWatcher? flutterWatcher;
+
+    if (launchFlutterApp) {
+      flutterWatcher = FileWatcher(
+        watchPaths: {
+          p.absolute(p.joinAll([...config.flutterPackagePathParts, 'lib'])),
+        },
+      );
+
+      flutterFileChangeSub = flutterWatcher.onFilesChanged
+          .asyncMapBuffer((events) async => flutterProcess?.reload())
+          .listen((_) {});
+    }
   }
 
   return WatchLoopReady(
@@ -571,6 +616,10 @@ Future<WatchLoopSetupResult> _setupWatchLoop({
       fileChangeSub: fileChangeSub,
       closeAnalyzers: closeAnalyzers,
       stopDocker: startedDocker ? () => _stopDockerServices(serverDir) : null,
+      stopFlutterProcess: () async {
+        await flutterFileChangeSub?.cancel();
+        await flutterProcess?.stop();
+      },
       vmServiceInfoFile: vmServiceInfoFile,
     ),
   );
@@ -707,10 +756,12 @@ Future<String?> _checkExistingServer(String infoPath) async {
 Future<int> _runWithTui({
   required Configuration<StartOption> commandConfig,
   required bool watch,
+  required bool launchFlutterApp,
   required List<String> serverArgs,
   required GeneratorConfig config,
 }) async {
-  final holder = StartAppStateHolder(ServerWatchState());
+  final state = ServerWatchState()..showFlutterOutput = launchFlutterApp;
+  final holder = StartAppStateHolder(state);
   var backendStarted = false;
 
   // Shared shutdown signal
@@ -731,6 +782,7 @@ Future<int> _runWithTui({
           holder: h,
           commandConfig: commandConfig,
           watch: watch,
+          launchFlutterApp: launchFlutterApp,
           serverArgs: serverArgs,
           config: config,
           shutdown: shutdown,
@@ -764,6 +816,7 @@ Future<void> _runTuiBackend({
   required StartAppStateHolder holder,
   required Configuration<StartOption> commandConfig,
   required bool watch,
+  required bool launchFlutterApp,
   required List<String> serverArgs,
   required GeneratorConfig config,
   required _ShutdownSignal shutdown,
@@ -779,8 +832,23 @@ Future<void> _runTuiBackend({
 
     final argsRef = ServerArgsRef(serverArgs);
 
-    final stdoutSink = TuiLogSink(holder);
-    final stderrSink = TuiLogSink(holder);
+    final serverStdoutSink = TuiLogSink(
+      holder,
+      addLine: holder.state.rawLines.add,
+    );
+    final serverStderrSink = TuiLogSink(
+      holder,
+      addLine: holder.state.rawLines.add,
+    );
+
+    final flutterStdoutSink = TuiLogSink(
+      holder,
+      addLine: holder.state.rawFlutterProcessLines.add,
+    );
+    final flutterStderrSink = TuiLogSink(
+      holder,
+      addLine: holder.state.rawFlutterProcessLines.add,
+    );
 
     final result = await _setupWatchLoop(
       config: config,
@@ -788,9 +856,13 @@ Future<void> _runTuiBackend({
       serverArgs: argsRef,
       watch: watch,
       docker: docker,
+      launchFlutterApp: launchFlutterApp,
+      useTui: true,
       shutdown: shutdown,
-      serverStdoutSink: stdoutSink,
-      serverStderrSink: stderrSink,
+      serverStdoutSink: serverStdoutSink,
+      serverStderrSink: serverStderrSink,
+      flutterStdoutSink: flutterStdoutSink,
+      flutterStderrSink: flutterStderrSink,
       onServerStart: (server) async {
         final vmService = server.vmService;
         if (vmService == null) return;

@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 import 'package:serverpod_cli/src/commands/generate.dart';
 import 'package:serverpod_cli/src/commands/messages.dart';
 import 'package:serverpod_cli/src/commands/start/file_watcher.dart';
+import 'package:serverpod_cli/src/commands/start/flutter_process.dart';
 import 'package:serverpod_cli/src/commands/start/kernel_compiler.dart';
 import 'package:serverpod_cli/src/commands/start/native_assets_builder.dart';
 import 'package:serverpod_cli/src/commands/start/server_process.dart';
@@ -127,6 +128,7 @@ class WatchSession {
   final Set<String> _pendingPaths = {};
 
   ServerProcess _server;
+  final FlutterProcess? _flutterProcess;
 
   SessionState _state = SessionState.idle;
 
@@ -155,6 +157,7 @@ class WatchSession {
     ProtocolChangeClassifier classifyProtocolChange =
         defaultProtocolChangeClassifier,
     required ApplyMigrationsAction applyMigrationsAction,
+    FlutterProcess? flutterProcess,
   }) : _compiler = compiler,
        _nativeAssetsBuilder = nativeAssetsBuilder,
        _generate = generate,
@@ -162,7 +165,8 @@ class WatchSession {
        _server = initialServer,
        _generatedDirPaths = generatedDirPaths,
        _classifyProtocolChange = classifyProtocolChange,
-       _applyMigrationsAction = applyMigrationsAction {
+       _applyMigrationsAction = applyMigrationsAction,
+       _flutterProcess = flutterProcess {
     assert(
       nativeAssetsBuilder == null || compiler != null,
       'nativeAssetsBuilder requires a compiler.',
@@ -403,6 +407,14 @@ class WatchSession {
     await _restartServer(dillPath);
   }
 
+  /// Hot reloads the Flutter process then runs [call].
+  Future<void> _runWithFlutterProcessReload(
+    Future<void> Function() call,
+  ) async {
+    _flutterProcess?.reload();
+    await call();
+  }
+
   /// Forces a hot reload.
   ///
   /// Forces a full recompile and hot reload (or restart).
@@ -413,13 +425,15 @@ class WatchSession {
       throw StateError('Session has been disposed.');
     }
     if (_compiler == null) {
-      return _chain(() => _reload(null));
+      return _chain(() => _runWithFlutterProcessReload(() => _reload(null)));
     }
     return _chain(
-      () => _compileAndReload(
-        dartFiles: const {},
-        packageConfigChanged: false,
-        forceFullCompile: true,
+      () => _runWithFlutterProcessReload(
+        () => _compileAndReload(
+          dartFiles: const {},
+          packageConfigChanged: false,
+          forceFullCompile: true,
+        ),
       ),
     );
   }
